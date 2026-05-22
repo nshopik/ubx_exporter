@@ -1,0 +1,132 @@
+# ubx_exporter
+
+Prometheus exporter for u-blox UBX-protocol GNSS receivers. Polls receiver
+health (MON-RF), satellite reception (NAV-SAT), and PPS timing quality
+(NAV-PVT, TIM-TP, NAV-CLOCK, NAV-DOP) on a configurable interval; captures
+the L1 spectrum (MON-SPAN) on a slower interval for waterfall plots in
+Grafana. Built and tested against a u-blox NEO-M9N; should work on any UBX
+receiver supporting those messages.
+
+Two Grafana dashboards ship with it:
+
+- **`ubx-overview-dashboard.json`** — on-call view, 8 red/yellow/green stat
+  tiles + 6 h fix-state strip + 30 min spectrogram. Green wall = OK.
+- **`ubx-dashboard.json`** — detail view for forensics, ~10 panels covering
+  every exposed metric with thresholds and descriptions.
+
+## Requirements
+
+- A u-blox UBX-capable GNSS receiver on a serial device. The exporter
+  defaults to **115200 baud**; pass `--baud` if your receiver is at a
+  different rate (factory-fresh NEO-M9N is 38400, older generations 9600).
+- Python 3.8+.
+- Linux host with read/write access to the serial device (deploy host is
+  typically the NTP server itself).
+- Prometheus to scrape `/metrics`, Grafana to render the dashboards.
+
+## Install
+
+On the host that will run the exporter (one-time):
+
+```bash
+# Create a venv somewhere persistent
+python3 -m venv /opt/ubx-exporter/env
+source /opt/ubx-exporter/env/bin/activate
+pip install pyubx2 pyserial prometheus_client
+
+# Drop the script in
+cp ubx_exporter.py /usr/local/bin/
+chmod +x /usr/local/bin/ubx_exporter.py
+```
+
+> **pyserial gotcha:** a PyPI package literally called `serial` exists and
+> shadows pyserial. If you see `AttributeError: module 'serial' has no
+> attribute 'Serial'`, run `pip uninstall serial && pip install pyserial`.
+
+## Run
+
+Single device:
+
+```bash
+/opt/ubx-exporter/env/bin/python3 /usr/local/bin/ubx_exporter.py /dev/ttyS5
+```
+
+Multiple devices (one worker thread per port; metrics carry a `port` label
+to distinguish them):
+
+```bash
+/opt/ubx-exporter/env/bin/python3 /usr/local/bin/ubx_exporter.py /dev/ttyS5,/dev/ttyS6
+```
+
+CLI options:
+
+| Flag | Default | What it does |
+|---|---|---|
+| `--listen` | `9021` | HTTP port for `/metrics` |
+| `--baud` | `115200` | Shared baud rate for all ports |
+| `--basic-interval` | `15` (s) | Cadence for MON-RF / NAV-* / TIM-TP polls |
+| `--span-interval` | `60` (s) | Cadence for MON-SPAN spectrum captures |
+
+Then `curl http://localhost:9021/metrics` to verify metrics are present.
+
+> **gpsd will fight you for the serial device.** If gpsd is running and
+> bound to your device, stop it (`systemctl stop gpsd gpsd.socket`) before
+> starting the exporter — or use a different serial port.
+
+## Run as a systemd service
+
+Minimal unit at `/etc/systemd/system/ubx-exporter.service`:
+
+```ini
+[Unit]
+Description=u-blox UBX Prometheus exporter
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/opt/ubx-exporter/env/bin/python3 /usr/local/bin/ubx_exporter.py /dev/ttyS5
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Then `systemctl daemon-reload && systemctl enable --now ubx-exporter`.
+
+## Prometheus scrape config
+
+```yaml
+scrape_configs:
+  - job_name: ubx_exporter
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['ntp-host.example.com:9021']
+```
+
+`scrape_interval` should be ≥ `--basic-interval` (default 15 s) to avoid
+querying stale samples.
+
+## Grafana
+
+Dashboards → New → Import → upload the JSON, pick your Prometheus
+datasource when prompted. Import the overview dashboard first; that's the
+one to keep on a wall display. Drill into the detail dashboard when a tile
+goes red.
+
+Each dashboard has a `Port` template variable that auto-populates from the
+`ublox_fix` series — useful when running multi-port to pick which receiver
+to view.
+
+## Troubleshooting (the three you'll actually hit)
+
+1. **All metrics flat / missing** — gpsd is holding the device, OR the
+   service is running but the receiver isn't responding. Check
+   `journalctl -u ubx-exporter` for `# poll error:` lines and
+   `lsof /dev/ttyS5` for competing processes.
+2. **TIM-TP / `ublox_pps_*` metrics missing** — your receiver doesn't have
+   a PPS output configured. Run `ubxtool -p CFG-TP5 -f /dev/ttyS5 -s 115200`
+   (or whatever baud your receiver is at) to inspect the PPS configuration.
+3. **MON-SPAN spectrum bins all zero** — almost always means you're on an
+   older pyubx2 with a different attribute layout. Upgrade pyubx2 first.
+
