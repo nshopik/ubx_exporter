@@ -16,12 +16,10 @@ Two Grafana dashboards ship with it:
 
 ## Requirements
 
-- A u-blox UBX-capable GNSS receiver on a serial device. The exporter
-  defaults to **115200 baud**; pass `--baud` if your receiver is at a
-  different rate (factory-fresh NEO-M9N is 38400, older generations 9600).
+- A u-blox UBX-capable GNSS receiver on a serial device (default baud
+  115200; pass `--baud` if yours differs).
 - Python 3.8+.
-- Linux host with read/write access to the serial device (deploy host is
-  typically the NTP server itself).
+- Linux host with read/write access to the serial device.
 - Prometheus to scrape `/metrics`, Grafana to render the dashboards.
 
 ## Install
@@ -29,6 +27,9 @@ Two Grafana dashboards ship with it:
 On the host that will run the exporter (one-time):
 
 ```bash
+# Ensure the user can access the serial device
+sudo usermod -aG dialout $(whoami)
+
 # Create a venv somewhere persistent
 python3 -m venv /opt/ubx-exporter/env
 source /opt/ubx-exporter/env/bin/activate
@@ -45,20 +46,17 @@ chmod +x /usr/local/bin/ubx_exporter.py
 
 ## Run
 
-Single device:
+### Foreground (smoke test)
 
 ```bash
 /opt/ubx-exporter/env/bin/python3 /usr/local/bin/ubx_exporter.py /dev/ttyS5
 ```
 
-Multiple devices (one worker thread per port; metrics carry a `port` label
-to distinguish them):
+Multiple devices (comma-separated):
 
 ```bash
 /opt/ubx-exporter/env/bin/python3 /usr/local/bin/ubx_exporter.py /dev/ttyS5,/dev/ttyS6
 ```
-
-CLI options:
 
 | Flag | Default | What it does |
 |---|---|---|
@@ -67,13 +65,13 @@ CLI options:
 | `--basic-interval` | `15` (s) | Cadence for MON-RF / NAV-* / TIM-TP polls |
 | `--span-interval` | `60` (s) | Cadence for MON-SPAN spectrum captures |
 
-Then `curl http://localhost:9021/metrics` to verify metrics are present.
+Verify with `curl http://localhost:9021/metrics`.
 
 > **gpsd will fight you for the serial device.** If gpsd is running and
 > bound to your device, stop it (`systemctl stop gpsd gpsd.socket`) before
 > starting the exporter — or use a different serial port.
 
-## Run as a systemd service
+### systemd
 
 Minimal unit at `/etc/systemd/system/ubx-exporter.service`:
 
@@ -84,6 +82,7 @@ After=network.target
 
 [Service]
 Type=simple
+# Runs as root by default; add User= for a dedicated account
 ExecStart=/opt/ubx-exporter/env/bin/python3 /usr/local/bin/ubx_exporter.py /dev/ttyS5
 Restart=on-failure
 RestartSec=5
@@ -99,13 +98,10 @@ Then `systemctl daemon-reload && systemctl enable --now ubx-exporter`.
 ```yaml
 scrape_configs:
   - job_name: ubx_exporter
-    scrape_interval: 30s
+    scrape_interval: 30s  # keep >= --basic-interval (default 15s)
     static_configs:
       - targets: ['ntp-host.example.com:9021']
 ```
-
-`scrape_interval` should be ≥ `--basic-interval` (default 15 s) to avoid
-querying stale samples.
 
 ## Grafana
 
