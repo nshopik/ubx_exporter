@@ -9,10 +9,10 @@ receiver supporting those messages.
 
 Two Grafana dashboards ship with it:
 
-- **`ubx-overview-dashboard.json`** — on-call view, 8 red/yellow/green stat
+- **`ubx-dashboard-overview.json`** — on-call view, 8 red/yellow/green stat
   tiles + 6 h fix-state strip + 30 min spectrogram. Green wall = OK.
-- **`ubx-dashboard.json`** — detail view for forensics, ~10 panels covering
-  every exposed metric with thresholds and descriptions.
+- **`ubx-dashboard-detailed.json`** — detail view for forensics, ~10 panels
+  covering every exposed metric with thresholds and descriptions.
 
 ## Requirements
 
@@ -114,9 +114,9 @@ datasource when prompted. Import the overview dashboard first; that's the
 one to keep on a wall display. Drill into the detail dashboard when a tile
 goes red.
 
-Each dashboard has a `Port` template variable that auto-populates from the
-`ublox_fix` series — useful when running multi-port to pick which receiver
-to view.
+Each dashboard has `Instance` and `Port` template variables that
+auto-populate from the `ublox_fix` series — useful when running exporters
+on multiple nodes or with multiple serial ports.
 
 ## Troubleshooting (the three you'll actually hit)
 
