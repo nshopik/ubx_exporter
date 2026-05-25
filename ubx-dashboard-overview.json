@@ -664,10 +664,9 @@
       "options": {
         "view": {
           "allLayers": true,
-          "id": "coords",
-          "lat": 0,
-          "lon": 0,
-          "zoom": 17
+          "id": "fit",
+          "maxZoom": 17,
+          "padding": 5
         },
         "basemap": {
           "config": {},
