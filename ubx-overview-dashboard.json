@@ -308,11 +308,77 @@
     },
 
     {
+      "id": 11,
+      "type": "geomap",
+      "title": "Receiver position",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 10 },
+      "targets": [
+        { "expr": "ublox_pvt_latitude{port=\"$port\"}", "legendFormat": "lat", "refId": "A" },
+        { "expr": "ublox_pvt_longitude{port=\"$port\"}", "legendFormat": "lon", "refId": "B" }
+      ],
+      "options": {
+        "view": {
+          "allLayers": true,
+          "id": "coords",
+          "lat": 0,
+          "lon": 0,
+          "zoom": 17
+        },
+        "basemap": {
+          "config": {},
+          "name": "Layer 0",
+          "type": "default"
+        },
+        "layers": [
+          {
+            "config": {
+              "showLegend": false,
+              "style": {
+                "color": { "fixed": "red" },
+                "opacity": 0.8,
+                "rotation": { "fixed": 0, "max": 360, "min": -360, "mode": "fixed" },
+                "size": { "fixed": 8, "max": 15, "min": 2 },
+                "symbol": { "fixed": "img/icons/marker/circle.svg", "mode": "fixed" }
+              }
+            },
+            "location": {
+              "mode": "coords",
+              "latitude": "lat",
+              "longitude": "lon"
+            },
+            "name": "Position",
+            "type": "markers"
+          }
+        ],
+        "controls": {
+          "mouseWheelZoom": true,
+          "showAttribution": false,
+          "showDebug": false,
+          "showMeasure": false,
+          "showScale": false,
+          "showZoom": true
+        },
+        "tooltip": { "mode": "details" }
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "transformations": [
+        {
+          "id": "joinByField",
+          "options": { "byField": "Time", "mode": "outer" }
+        }
+      ]
+    },
+
+    {
       "id": 9,
       "type": "state-timeline",
       "title": "Fix state — last 6 h",
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-      "gridPos": { "h": 4, "w": 24, "x": 0, "y": 10 },
+      "gridPos": { "h": 4, "w": 24, "x": 0, "y": 18 },
       "timeFrom": "6h",
       "targets": [ { "expr": "ublox_fix{port=\"$port\"}", "legendFormat": "fix", "refId": "A" } ],
       "fieldConfig": {
@@ -344,7 +410,7 @@
       "type": "heatmap",
       "title": "L1 spectrogram — last 30 min",
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 14 },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 22 },
       "timeFrom": "30m",
       "targets": [
         {

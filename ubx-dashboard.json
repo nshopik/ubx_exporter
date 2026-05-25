@@ -195,38 +195,35 @@
 
     {
       "id": 5,
-      "type": "stat",
-      "title": "Now",
+      "type": "timeseries",
+      "title": "Position (lat / lon / height MSL)",
+      "description": "Reported position from NAV-PVT. For a stationary timing receiver all three lines should be flat. A sudden shift in lat/lon without a corresponding hAcc increase is a strong spoofing indicator. Height (right axis) is above mean sea level.",
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
       "targets": [
-        { "expr": "ublox_fix{port=\"$port\"}",       "legendFormat": "fix",     "refId": "A" },
-        { "expr": "ublox_antenna_status{port=\"$port\"}", "legendFormat": "ant",  "refId": "B" },
-        { "expr": "ublox_sat_max_cno{port=\"$port\"}",  "legendFormat": "max C/N0", "refId": "C" },
-        { "expr": "ublox_sat_cno_above_threshold{port=\"$port\",threshold=\"30\"}", "legendFormat": "sats >30", "refId": "D" },
-        { "expr": "ublox_jam_indicator{port=\"$port\"}", "legendFormat": "jam", "refId": "E" },
-        { "expr": "ublox_pvt_time_accuracy_ns{port=\"$port\"}", "legendFormat": "tAcc ns", "refId": "F" },
-        { "expr": "ublox_pps_quantization_error_ps{port=\"$port\"}", "legendFormat": "qErr ps", "refId": "G" },
-        { "expr": "ublox_dop_time{port=\"$port\"}", "legendFormat": "tDOP", "refId": "H" },
-        { "expr": "ublox_pvt_sats_used{port=\"$port\"}", "legendFormat": "sats used", "refId": "I" }
+        { "expr": "ublox_pvt_latitude{port=\"$port\"}",       "legendFormat": "latitude (deg)",  "refId": "A" },
+        { "expr": "ublox_pvt_longitude{port=\"$port\"}",      "legendFormat": "longitude (deg)", "refId": "B" },
+        { "expr": "ublox_pvt_height_msl_mm{port=\"$port\"}", "legendFormat": "height MSL (mm)", "refId": "C" }
       ],
-      "options": {
-        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
-        "orientation": "horizontal",
-        "textMode": "value_and_name",
-        "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "auto"
-      },
       "fieldConfig": {
         "defaults": {
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [{ "color": "green", "value": null }]
+          "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 5, "showPoints": "never" },
+          "unit": "degree",
+          "decimals": 7
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "height MSL (mm)" },
+            "properties": [
+              { "id": "custom.axisPlacement", "value": "right" },
+              { "id": "unit", "value": "lengthmm" },
+              { "id": "decimals", "value": 0 },
+              { "id": "color", "value": { "mode": "fixed", "fixedColor": "green" } }
+            ]
           }
-        }
-      }
+        ]
+      },
+      "options": { "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["last", "min", "max", "mean"] } }
     },
 
     {

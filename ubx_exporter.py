@@ -101,6 +101,27 @@ m_pvt_fix_ok = Gauge(
     LBL,
 )
 
+m_pvt_lat = Gauge(
+    "ublox_pvt_latitude",
+    "NAV-PVT reported latitude, degrees. For a stationary timing receiver this should be "
+    "rock-stable once survey-in completes. A sudden shift while hAcc remains low is a strong "
+    "spoofing indicator — a real degradation would show hAcc climbing first.",
+    LBL,
+)
+m_pvt_lon = Gauge(
+    "ublox_pvt_longitude",
+    "NAV-PVT reported longitude, degrees. Same rationale as latitude: deviation from the "
+    "known baseline position without a corresponding hAcc increase suggests spoofing.",
+    LBL,
+)
+m_pvt_hmsl = Gauge(
+    "ublox_pvt_height_msl_mm",
+    "NAV-PVT height above mean sea level, millimeters. More operationally useful than "
+    "ellipsoidal height. For a roof-mounted antenna this should be constant; drift indicates "
+    "multipath or spoofing.",
+    LBL,
+)
+
 m_tp_qerr = Gauge(
     "ublox_pps_quantization_error_ps",
     "TIM-TP quantization error, picoseconds. The residual error between the PPS edge the "
@@ -246,6 +267,9 @@ def update_basic(port, ser, ubr, last_seen):
         m_pvt_vacc.labels(port).set(pvt.vAcc)
         m_pvt_sats_used.labels(port).set(pvt.numSV)
         m_pvt_fix_ok.labels(port).set(getattr(pvt, "gnssFixOk", 0))
+        m_pvt_lat.labels(port).set(pvt.lat)
+        m_pvt_lon.labels(port).set(pvt.lon)
+        m_pvt_hmsl.labels(port).set(pvt.hMSL)
         last_seen["NAV-PVT"] = now
 
     if "NAV-CLOCK" in got:
