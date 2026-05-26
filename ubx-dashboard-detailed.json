@@ -101,6 +101,7 @@
       "id": 1,
       "type": "state-timeline",
       "title": "Fix state",
+      "description": "NAV-STATUS fix type. For a stationary timing receiver, expect 3 (3D) or 5 (TIME). 2D fixes lack vertical/timing accuracy. NO FIX (red) sustained beyond a few seconds at startup means the receiver cannot see enough satellites. DEAD-RECKON means the chip is coasting on its last position with no live GNSS input.",
       "datasource": {
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
@@ -182,6 +183,7 @@
       "id": 2,
       "type": "timeseries",
       "title": "Satellite count by C/N0 threshold",
+      "description": "C/N0 = carrier-to-noise density in dB-Hz — how loud each satellite is above the noise floor. Lines show how many satellites exceed each threshold: >20 = detected, >30 = usable for a fix, >35 = strong, >40 = excellent. Need at least 4 sats above 30 for a 3D fix. 'max C/N0' (right axis, dashed) is the single best satellite — open sky with a healthy antenna should reach 40–48 dB-Hz; below 30 means the whole sky is marginal.",
       "datasource": {
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
@@ -292,6 +294,7 @@
       "id": 3,
       "type": "timeseries",
       "title": "Front-end stress: mag I/Q (>200 saturates)",
+      "description": "ADC magnitude of the in-phase (I) and quadrature (Q) signal paths from MON-RF. Range 0–255. Normal is 100–160. Orange threshold at 160 = elevated stress. Red at 200 = front-end is clipping (saturating), which kills satellite reception even though the chip doesn't flag it as jamming. I and Q should track each other; a large split suggests an RF chain imbalance.",
       "datasource": {
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
@@ -359,6 +362,7 @@
       "id": 4,
       "type": "timeseries",
       "title": "Noise floor & jamming indicator",
+      "description": "Three MON-RF metrics on one panel. noisePerMS: receiver noise floor — normal <70, warning 70–100, critical >100. jamInd: broadband jamming indicator (0–255) — <45 clean, 45–95 warning, >95 active jammer likely. Note: jamInd does NOT detect narrowband or out-of-band interference; check magI/Q for that. agcCnt (right axis, dotted): automatic gain control counter — normal 2000–6000, railed at 0 or 8191 means AGC cannot compensate.",
       "datasource": {
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
@@ -916,6 +920,7 @@
       "id": 6,
       "type": "heatmap",
       "title": "L1 band spectrogram (MON-SPAN waterfall)",
+      "description": "MON-SPAN waterfall. Each row is a time sample; Y axis is frequency in MHz across the L1 band (~1525–1653 MHz, 128 MHz window centered on 1589 MHz). Color intensity = signal amplitude. A healthy antenna shows a smooth dome shape around 1575 MHz (GPS L1). A bright horizontal stripe at a fixed frequency = narrowband interferer. Note: MON-SPAN only sees this 128 MHz window — out-of-band interferers are invisible here but can still saturate the front-end (check magI/Q).",
       "datasource": {
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
