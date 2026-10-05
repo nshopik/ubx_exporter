@@ -95,7 +95,8 @@
     "to": "now"
   },
   "timezone": "",
-  "title": "u-blox GNSS Health",
+  "title": "u-blox GNSS Health detailed",
+  "uid": "ublox-gnss-detailed",
   "panels": [
     {
       "id": 1,
@@ -1122,6 +1123,99 @@
       }
     },
     {
+      "id": 15,
+      "type": "table",
+      "title": "Satellites (NAV-SAT, one row per satellite)",
+      "description": "NAV-SAT per satellite: C/N0, signed pseudorange residual (used and unused satellites), used flag, qualityInd (0=no signal 1=searching 2=acquired 3=unusable 4=code locked 5-7=code and carrier locked), elevation and azimuth. Spoofed satellites tend to share a flat C/N0 with large residuals; real satellites cut from the solution usually sit low in elevation or C/N0.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 24,
+        "x": 0,
+        "y": 54
+      },
+      "targets": [
+        {
+          "expr": "max without (__name__) (ublox_sv_cno_dbhz{port=\"$port\", instance=\"$instance\"})",
+          "format": "table",
+          "instant": true,
+          "refId": "A"
+        },
+        {
+          "expr": "max without (__name__) (ublox_sv_pr_residual_m{port=\"$port\", instance=\"$instance\"})",
+          "format": "table",
+          "instant": true,
+          "refId": "B"
+        },
+        {
+          "expr": "max without (__name__) (ublox_sv_used{port=\"$port\", instance=\"$instance\"})",
+          "format": "table",
+          "instant": true,
+          "refId": "C"
+        },
+        {
+          "expr": "max without (__name__) (ublox_sv_quality{port=\"$port\", instance=\"$instance\"})",
+          "format": "table",
+          "instant": true,
+          "refId": "D"
+        },
+        {
+          "expr": "max without (__name__) (ublox_sv_elevation_deg{port=\"$port\", instance=\"$instance\"})",
+          "format": "table",
+          "instant": true,
+          "refId": "E"
+        },
+        {
+          "expr": "max without (__name__) (ublox_sv_azimuth_deg{port=\"$port\", instance=\"$instance\"})",
+          "format": "table",
+          "instant": true,
+          "refId": "F"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "__name__": true,
+              "instance": true,
+              "job": true,
+              "port": true
+            },
+            "indexByName": {
+              "gnss": 0,
+              "svid": 1
+            },
+            "renameByName": {
+              "Value #A": "C/N0 (dB-Hz)",
+              "Value #B": "PR residual (m)",
+              "Value #C": "Used",
+              "Value #D": "Quality",
+              "Value #E": "Elevation (deg)",
+              "Value #F": "Azimuth (deg)"
+            }
+          }
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "displayName": "gnss",
+            "desc": false
+          }
+        ]
+      }
+    },
+    {
       "id": 6,
       "type": "heatmap",
       "title": "L1 band spectrogram (MON-SPAN waterfall)",
@@ -1134,7 +1228,7 @@
         "h": 14,
         "w": 24,
         "x": 0,
-        "y": 54
+        "y": 66
       },
       "targets": [
         {

@@ -18,9 +18,9 @@ def ubx_frame(cls_id, payload):
     return b"\xb5\x62" + body + bytes([a, b])
 
 
-def nav_sat_sv(gnss_id, sv_id, cno, pr_res_dm, used):
-    # flags: qualityInd 7 (bits 0-2), svUsed bit 3; prRes is in 0.1 m.
-    return struct.pack("<BBBbhhI", gnss_id, sv_id, cno, 40, 100, pr_res_dm, 0x07 | used << 3)
+def nav_sat_sv(gnss_id, sv_id, cno, pr_res_dm, used, elev=40, azim=100, quality=7):
+    # flags: qualityInd bits 0-2, svUsed bit 3; prRes is in 0.1 m.
+    return struct.pack("<BBBbhhI", gnss_id, sv_id, cno, elev, azim, pr_res_dm, quality | used << 3)
 
 
 def nav_sat(svs):
@@ -33,11 +33,11 @@ def spoofed_receiver_frames():
     signal, 27.8 m/s ground speed on a fixed antenna."""
     svs = [
         nav_sat_sv(0, 5, 37, 2670, 1),
-        nav_sat_sv(0, 7, 38, -2900, 1),
+        nav_sat_sv(0, 7, 38, -2900, 1, elev=12, azim=251),
         nav_sat_sv(0, 9, 36, 2600, 1),
         nav_sat_sv(6, 1, 34, 0, 0),
-        nav_sat_sv(6, 2, 32, 0, 0),
-        nav_sat_sv(2, 3, 0, 0, 0),
+        nav_sat_sv(6, 2, 32, -15, 0, elev=65, azim=310, quality=4),
+        nav_sat_sv(2, 3, 0, 0, 0, elev=-5, azim=0, quality=1),
     ]
     pvt = bytearray(92)
     struct.pack_into("<i", pvt, 60, 27800)
@@ -79,6 +79,23 @@ class TestUpdateBasic(unittest.TestCase):
             ("ublox_sat_pr_residual_max_m", {"gnss": "GPS"}, 290.0),
             ("ublox_sat_pr_residual_median_m", {"gnss": "GLONASS"}, nan),
             ("ublox_sat_pr_residual_max_m", {"gnss": "GLONASS"}, nan),
+            ("ublox_sv_cno_dbhz", {"gnss": "GPS", "svid": "5"}, 37),
+            ("ublox_sv_pr_residual_m", {"gnss": "GPS", "svid": "5"}, 267.0),
+            ("ublox_sv_used", {"gnss": "GPS", "svid": "5"}, 1),
+            ("ublox_sv_cno_dbhz", {"gnss": "GPS", "svid": "7"}, 38),
+            ("ublox_sv_elevation_deg", {"gnss": "GPS", "svid": "7"}, 12),
+            ("ublox_sv_azimuth_deg", {"gnss": "GPS", "svid": "7"}, 251),
+            ("ublox_sv_pr_residual_m", {"gnss": "GPS", "svid": "7"}, -290.0),
+            ("ublox_sv_quality", {"gnss": "GPS", "svid": "7"}, 7),
+            ("ublox_sv_cno_dbhz", {"gnss": "GLONASS", "svid": "2"}, 32),
+            ("ublox_sv_elevation_deg", {"gnss": "GLONASS", "svid": "2"}, 65),
+            ("ublox_sv_azimuth_deg", {"gnss": "GLONASS", "svid": "2"}, 310),
+            ("ublox_sv_pr_residual_m", {"gnss": "GLONASS", "svid": "2"}, -1.5),
+            ("ublox_sv_quality", {"gnss": "GLONASS", "svid": "2"}, 4),
+            ("ublox_sv_used", {"gnss": "GLONASS", "svid": "2"}, 0),
+            ("ublox_sv_cno_dbhz", {"gnss": "Galileo", "svid": "3"}, 0),
+            ("ublox_sv_elevation_deg", {"gnss": "Galileo", "svid": "3"}, -5),
+            ("ublox_sv_quality", {"gnss": "Galileo", "svid": "3"}, 1),
         ]:
             with self.subTest(metric=metric, **labels):
                 got = REGISTRY.get_sample_value(metric, {"port": "/dev/test", **labels})
@@ -100,6 +117,13 @@ class TestUpdateBasic(unittest.TestCase):
         self.assertTrue(math.isnan(REGISTRY.get_sample_value("ublox_sat_pr_residual_median_m", labels)))
         self.assertTrue(math.isnan(REGISTRY.get_sample_value("ublox_sat_pr_residual_max_m", labels)))
         self.assertEqual(REGISTRY.get_sample_value("ublox_sat_used", {**labels, "gnss": "GPS"}), 1)
+        sv5 = {"port": "/dev/drop", "gnss": "GPS", "svid": "5"}
+        self.assertEqual(REGISTRY.get_sample_value("ublox_sv_pr_residual_m", sv5), 3.0)
+        for metric in ("ublox_sv_cno_dbhz", "ublox_sv_elevation_deg", "ublox_sv_azimuth_deg",
+                       "ublox_sv_pr_residual_m", "ublox_sv_quality", "ublox_sv_used"):
+            for gone in ({**sv5, "svid": "7"}, {**sv5, "gnss": "GLONASS", "svid": "1"}):
+                with self.subTest(metric=metric, **gone):
+                    self.assertIsNone(REGISTRY.get_sample_value(metric, gone))
 
 
 if __name__ == "__main__":

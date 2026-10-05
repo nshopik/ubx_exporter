@@ -98,7 +98,8 @@
   },
   "timezone": "",
   "title": "u-blox GNSS Overview (on-call)",
-  "description": "Glanceable health view. Green = all OK. Any non-green tile = open the detailed 'u-blox GNSS Health' dashboard.",
+  "uid": "ublox-gnss-overview",
+  "description": "Glanceable health view. Green = all OK. Any non-green tile = open the 'u-blox GNSS Health detailed' dashboard.",
   "panels": [
     {
       "id": 1,
