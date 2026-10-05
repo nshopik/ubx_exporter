@@ -544,7 +544,7 @@
         },
         "orientation": "auto",
         "textMode": "value",
-        "colorMode": "background",
+        "colorMode": "none",
         "graphMode": "area",
         "justifyMode": "center"
       },
@@ -554,24 +554,8 @@
           "min": 0,
           "max": 255,
           "color": {
-            "mode": "thresholds"
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "orange",
-                "value": 45
-              },
-              {
-                "color": "red",
-                "value": 95
-              }
-            ]
+            "mode": "fixed",
+            "fixedColor": "text"
           }
         }
       }
