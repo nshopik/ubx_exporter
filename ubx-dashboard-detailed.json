@@ -781,6 +781,69 @@
       }
     },
     {
+      "id": 21,
+      "type": "state-timeline",
+      "title": "Broadband jamming state (receiver's own detector)",
+      "description": "MON-RF flags jammingState: the receiver's broadband interference detector. jamInd above covers continuous-wave (narrow-band) interference only. UNKNOWN / OFF means the detector is disabled or has no verdict yet.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 24,
+        "x": 0,
+        "y": 43
+      },
+      "targets": [
+        {
+          "expr": "ublox_jamming_state{port=\"$port\", instance=\"$instance\"}",
+          "legendFormat": "jamming state",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "UNKNOWN / OFF",
+                  "color": "text",
+                  "index": 0
+                },
+                "1": {
+                  "text": "OK",
+                  "color": "green",
+                  "index": 1
+                },
+                "2": {
+                  "text": "WARNING",
+                  "color": "orange",
+                  "index": 2
+                },
+                "3": {
+                  "text": "CRITICAL",
+                  "color": "red",
+                  "index": 3
+                }
+              }
+            }
+          ],
+          "color": {
+            "mode": "fixed"
+          }
+        }
+      },
+      "options": {
+        "mergeValues": true,
+        "showValue": "always",
+        "alignValue": "center",
+        "rowHeight": 0.9
+      }
+    },
+    {
       "type": "row",
       "id": 19,
       "title": "Sky and geometry",
@@ -789,7 +852,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 43
+        "y": 47
       },
       "panels": [
         {
@@ -805,7 +868,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 44
+            "y": 48
           },
           "targets": [
             {
@@ -916,7 +979,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 44
+            "y": 48
           },
           "targets": [
             {
@@ -1022,7 +1085,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 44
+        "y": 48
       },
       "panels": [
         {
@@ -1038,7 +1101,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 45
+            "y": 49
           },
           "targets": [
             {
@@ -1106,7 +1169,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 45
+            "y": 49
           },
           "targets": [
             {
@@ -1207,7 +1270,7 @@
             "h": 8,
             "w": 24,
             "x": 0,
-            "y": 53
+            "y": 57
           },
           "targets": [
             {
@@ -1293,7 +1356,7 @@
             "h": 14,
             "w": 24,
             "x": 0,
-            "y": 61
+            "y": 65
           },
           "targets": [
             {

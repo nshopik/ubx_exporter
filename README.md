@@ -12,7 +12,7 @@ Two Grafana dashboards ship with it:
 - **`ubx-dashboard-overview.json`** — on-call view, 8 stat tiles (7
   red/yellow/green, jam indicator plain) + 6 h fix-state strip + 30 min
   spectrogram. Green tiles = OK.
-- **`ubx-dashboard-detailed.json`** — detail view for forensics, 15 panels
+- **`ubx-dashboard-detailed.json`** — detail view for forensics, 16 panels
   covering every exposed metric with thresholds and descriptions.
 
 ## Requirements
