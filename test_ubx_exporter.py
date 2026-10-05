@@ -38,6 +38,8 @@ def spoofed_receiver_frames():
         nav_sat_sv(6, 1, 34, 0, 0),
         nav_sat_sv(6, 2, 32, -15, 0, elev=65, azim=310, quality=4),
         nav_sat_sv(2, 3, 0, 0, 0, elev=-5, azim=0, quality=1),
+        nav_sat_sv(0, 25, 35, -32768, 0, elev=10, azim=164),
+        nav_sat_sv(0, 29, 35, -32768, 1, elev=62, azim=108),
     ]
     pvt = bytearray(92)
     struct.pack_into("<i", pvt, 60, 27800)
@@ -72,11 +74,11 @@ class TestUpdateBasic(unittest.TestCase):
             ("ublox_spoof_detection_state", {}, 2),
             ("ublox_jamming_state", {}, 3),
             ("ublox_pvt_ground_speed_mm_per_s", {}, 27800),
-            ("ublox_sat_count", {}, 6),
-            ("ublox_sat_tracked", {"gnss": "GPS"}, 3),
+            ("ublox_sat_count", {}, 8),
+            ("ublox_sat_tracked", {"gnss": "GPS"}, 5),
             ("ublox_sat_tracked", {"gnss": "GLONASS"}, 2),
             ("ublox_sat_tracked", {"gnss": "Galileo"}, 0),
-            ("ublox_sat_used", {"gnss": "GPS"}, 3),
+            ("ublox_sat_used", {"gnss": "GPS"}, 4),
             ("ublox_sat_used", {"gnss": "GLONASS"}, 0),
             ("ublox_sat_used", {"gnss": "Galileo"}, 0),
             ("ublox_sat_pr_residual_median_m", {"gnss": "GPS"}, 267.0),
@@ -100,6 +102,8 @@ class TestUpdateBasic(unittest.TestCase):
             ("ublox_sv_cno_dbhz", {"gnss": "Galileo", "svid": "3"}, 0),
             ("ublox_sv_elevation_deg", {"gnss": "Galileo", "svid": "3"}, -5),
             ("ublox_sv_quality", {"gnss": "Galileo", "svid": "3"}, 1),
+            ("ublox_sv_pr_residual_m", {"gnss": "GPS", "svid": "25"}, nan),
+            ("ublox_sv_pr_residual_m", {"gnss": "GPS", "svid": "29"}, nan),
         ]:
             with self.subTest(metric=metric, **labels):
                 got = REGISTRY.get_sample_value(metric, {"port": "/dev/test", **labels})

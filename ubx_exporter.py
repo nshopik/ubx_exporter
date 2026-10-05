@@ -80,14 +80,14 @@ m_sat_prres_median = Gauge(
     "NAV-SAT median absolute pseudorange residual of used satellites per constellation, meters. "
     "How far each measured range sits from the solved position/time. Healthy: under 10 m. "
     "Tens to hundreds of meters across a whole constellation means the ranges disagree with "
-    "the sky: spoofing or severe multipath. NaN when no satellite of the constellation is used.",
+    "the sky: spoofing or severe multipath. NaN when no used satellite reports a residual.",
     LBL_GNSS,
 )
 m_sat_prres_max = Gauge(
     "ublox_sat_pr_residual_max_m",
     "NAV-SAT maximum absolute pseudorange residual of used satellites per constellation, "
     "meters. A single outlier points at one bad satellite or multipath; compare with the "
-    "median to tell that apart from a constellation-wide offset. NaN when none is used.",
+    "median to tell that apart from a constellation-wide offset. NaN when no used satellite reports a residual.",
     LBL_GNSS,
 )
 m_sv_cno = Gauge("ublox_sv_cno_dbhz", "NAV-SAT per-satellite carrier-to-noise density, dB-Hz", LBL_SV)
@@ -95,7 +95,8 @@ m_sv_elev = Gauge("ublox_sv_elevation_deg", "NAV-SAT per-satellite elevation, de
 m_sv_azim = Gauge("ublox_sv_azimuth_deg", "NAV-SAT per-satellite azimuth, degrees", LBL_SV)
 m_sv_prres = Gauge(
     "ublox_sv_pr_residual_m",
-    "NAV-SAT per-satellite pseudorange residual as reported (signed), meters, used or not.",
+    "NAV-SAT per-satellite pseudorange residual as reported (signed), meters, used or not. "
+    "NaN when the receiver reports the int16 minimum (-3276.8 m).",
     LBL_SV,
 )
 m_sv_quality = Gauge(
@@ -106,6 +107,8 @@ m_sv_quality = Gauge(
 )
 m_sv_used = Gauge("ublox_sv_used", "NAV-SAT per-satellite svUsed flag (1=used in the solution)", LBL_SV)
 SV_GAUGES = (m_sv_cno, m_sv_elev, m_sv_azim, m_sv_prres, m_sv_quality, m_sv_used)
+# NAV-SAT prRes of -32768 (int16 minimum, 0.1 m units) marks a satellite with no residual.
+PRRES_NONE = -3276.8
 m_uptime    = Gauge("ublox_sample_age_seconds",
                     "Seconds since last successful sample (for each message family)",
                     LBL + ["family"])
@@ -334,23 +337,27 @@ def update_basic(port, ser, ubr, last_seen):
             m_cno_above.labels(port, str(thr)).set(sum(1 for c in cnos if c > thr))
         m_max_cno.labels(port).set(max(cnos) if cnos else 0)
         seen = seen_gnss.setdefault(port, set())
-        per_gnss = {g: {"tracked": 0, "res": []} for g in seen}
+        per_gnss = {g: {"tracked": 0, "used": 0, "res": []} for g in seen}
         svs = set()
         for i in range(1, sat.numSvs + 1):
             gnss_id = field(sat, "gnssId", i)
             key = (GNSS_NAMES.get(gnss_id, str(gnss_id)), str(field(sat, "svId", i)))
             svs.add(key)
+            pr_res = field(sat, "prRes", i)
             for gauge, base in zip(SV_GAUGES, ("cno", "elev", "azim", "prRes", "qualityInd", "svUsed")):
-                gauge.labels(port, *key).set(field(sat, base, i))
-            sv = per_gnss.setdefault(gnss_id, {"tracked": 0, "res": []})
+                value = field(sat, base, i)
+                gauge.labels(port, *key).set(float("nan") if base == "prRes" and value == PRRES_NONE else value)
+            sv = per_gnss.setdefault(gnss_id, {"tracked": 0, "used": 0, "res": []})
             sv["tracked"] += field(sat, "cno", i) > 0
             if field(sat, "svUsed", i):
-                sv["res"].append(abs(field(sat, "prRes", i)))
+                sv["used"] += 1
+                if pr_res != PRRES_NONE:
+                    sv["res"].append(abs(pr_res))
         for gnss_id, sv in per_gnss.items():
             name = GNSS_NAMES.get(gnss_id, str(gnss_id))
             res = sv["res"]
             m_sat_tracked.labels(port, name).set(sv["tracked"])
-            m_sat_used.labels(port, name).set(len(res))
+            m_sat_used.labels(port, name).set(sv["used"])
             m_sat_prres_median.labels(port, name).set(statistics.median(res) if res else float("nan"))
             m_sat_prres_max.labels(port, name).set(max(res) if res else float("nan"))
         seen.update(per_gnss)
