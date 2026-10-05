@@ -38,12 +38,15 @@ from prometheus_client import start_http_server, Gauge
 LBL = ["port"]
 LBL_BLK = ["port", "rf_block"]
 LBL_GNSS = ["port", "gnss"]
+LBL_SV = ["port", "gnss", "svid"]
 
 # NAV-SAT gnssId -> constellation name for the `gnss` label.
 GNSS_NAMES = {0: "GPS", 1: "SBAS", 2: "Galileo", 3: "BeiDou",
               4: "IMES", 5: "QZSS", 6: "GLONASS", 7: "NavIC"}
 # port -> gnssIds exported so far; a constellation that leaves NAV-SAT reads 0/NaN, not stale.
 seen_gnss = {}
+# port -> (gnss, svid) pairs in the last NAV-SAT; a satellite missing from the next one loses its series.
+seen_sv = {}
 
 m_fix       = Gauge("ublox_fix", "GPS fix (0=none 2=2D 3=3D 5=time)", LBL)
 m_ant       = Gauge("ublox_antenna_status", "Antenna status (1=DK 2=OK 3=SHORT 4=OPEN)", LBL)
@@ -86,6 +89,22 @@ m_sat_prres_max = Gauge(
     "median to tell that apart from a constellation-wide offset. NaN when none is used.",
     LBL_GNSS,
 )
+m_sv_cno = Gauge("ublox_sv_cno_dbhz", "NAV-SAT per-satellite carrier-to-noise density, dB-Hz", LBL_SV)
+m_sv_elev = Gauge("ublox_sv_elevation_deg", "NAV-SAT per-satellite elevation, degrees", LBL_SV)
+m_sv_azim = Gauge("ublox_sv_azimuth_deg", "NAV-SAT per-satellite azimuth, degrees", LBL_SV)
+m_sv_prres = Gauge(
+    "ublox_sv_pr_residual_m",
+    "NAV-SAT per-satellite pseudorange residual as reported (signed), meters, used or not.",
+    LBL_SV,
+)
+m_sv_quality = Gauge(
+    "ublox_sv_quality",
+    "NAV-SAT per-satellite qualityInd: 0=no signal 1=searching 2=acquired 3=unusable "
+    "4=code locked 5-7=code and carrier locked",
+    LBL_SV,
+)
+m_sv_used = Gauge("ublox_sv_used", "NAV-SAT per-satellite svUsed flag (1=used in the solution)", LBL_SV)
+SV_GAUGES = (m_sv_cno, m_sv_elev, m_sv_azim, m_sv_prres, m_sv_quality, m_sv_used)
 m_uptime    = Gauge("ublox_sample_age_seconds",
                     "Seconds since last successful sample (for each message family)",
                     LBL + ["family"])
@@ -314,8 +333,14 @@ def update_basic(port, ser, ubr, last_seen):
         m_max_cno.labels(port).set(max(cnos) if cnos else 0)
         seen = seen_gnss.setdefault(port, set())
         per_gnss = {g: {"tracked": 0, "res": []} for g in seen}
+        svs = set()
         for i in range(1, sat.numSvs + 1):
-            sv = per_gnss.setdefault(field(sat, "gnssId", i), {"tracked": 0, "res": []})
+            gnss_id = field(sat, "gnssId", i)
+            key = (GNSS_NAMES.get(gnss_id, str(gnss_id)), str(field(sat, "svId", i)))
+            svs.add(key)
+            for gauge, base in zip(SV_GAUGES, ("cno", "elev", "azim", "prRes", "qualityInd", "svUsed")):
+                gauge.labels(port, *key).set(field(sat, base, i))
+            sv = per_gnss.setdefault(gnss_id, {"tracked": 0, "res": []})
             sv["tracked"] += field(sat, "cno", i) > 0
             if field(sat, "svUsed", i):
                 sv["res"].append(abs(field(sat, "prRes", i)))
@@ -327,6 +352,10 @@ def update_basic(port, ser, ubr, last_seen):
             m_sat_prres_median.labels(port, name).set(statistics.median(res) if res else float("nan"))
             m_sat_prres_max.labels(port, name).set(max(res) if res else float("nan"))
         seen.update(per_gnss)
+        for key in seen_sv.get(port, set()) - svs:
+            for gauge in SV_GAUGES:
+                gauge.remove(port, *key)
+        seen_sv[port] = svs
         last_seen["NAV-SAT"] = now
 
     if "NAV-PVT" in got:
