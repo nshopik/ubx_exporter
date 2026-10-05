@@ -42,6 +42,9 @@ def spoofed_receiver_frames():
     pvt = bytearray(92)
     struct.pack_into("<i", pvt, 60, 27800)
     return {
+        # flags bits 0-1 = jammingState 3 (critical).
+        "MON-RF": ubx_frame(b"\x0a\x38", struct.pack("<BBH", 0, 1, 0) + struct.pack(
+            "<BBBBIIHHBbBbB3x", 0, 3, 2, 1, 0, 0, 92, 5800, 14, 0, 120, 0, 118)),
         # Raw NAV-DOP fields are DOP * 100, as the receiver sends them.
         "NAV-DOP": ubx_frame(b"\x01\x04", struct.pack("<IHHHHHHH", 0, 141, 129, 70, 100, 80, 60, 50)),
         # flags2 bits 3-4 = spoofDetState 2 (spoofing indicated).
@@ -67,6 +70,7 @@ class TestUpdateBasic(unittest.TestCase):
             ("ublox_dop_northing", {}, 0.60),
             ("ublox_dop_easting", {}, 0.50),
             ("ublox_spoof_detection_state", {}, 2),
+            ("ublox_jamming_state", {}, 3),
             ("ublox_pvt_ground_speed_mm_per_s", {}, 27800),
             ("ublox_sat_count", {}, 6),
             ("ublox_sat_tracked", {"gnss": "GPS"}, 3),

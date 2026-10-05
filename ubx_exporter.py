@@ -55,6 +55,7 @@ m_magq      = Gauge("ublox_mag_q", "ADC Q magnitude (>200 = saturating)", LBL)
 m_noise     = Gauge("ublox_noise_per_ms", "Noise level (lower=better; <70 good)", LBL)
 m_agc       = Gauge("ublox_agc_count", "AGC counter (0-8191)", LBL)
 m_jam       = Gauge("ublox_jam_indicator", "CW (narrow-band) interference indicator (0-255); threshold from an unjammed baseline", LBL)
+m_jam_state = Gauge("ublox_jamming_state", "MON-RF flags jammingState (broadband): 0=unknown or disabled, 1=ok, 2=warning, 3=critical", LBL)
 m_nsv       = Gauge("ublox_sat_count", "Satellites in NAV-SAT report", LBL)
 m_cno_above = Gauge("ublox_sat_cno_above_threshold",
                     "Number of sats with C/N0 above given threshold (dB-Hz)",
@@ -317,6 +318,7 @@ def update_basic(port, ser, ubr, last_seen):
         m_noise.labels(port).set(field(rf, "noisePerMS"))
         m_agc.labels(port).set(field(rf, "agcCnt"))
         m_jam.labels(port).set(field(rf, "jamInd"))
+        m_jam_state.labels(port).set(field(rf, "jammingState"))
         last_seen["MON-RF"] = now
 
     if "NAV-STATUS" in got:
