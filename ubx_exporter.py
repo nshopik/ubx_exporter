@@ -282,14 +282,13 @@ def update_basic(port, ser, ubr, last_seen):
 
     if "NAV-DOP" in got:
         dop = got["NAV-DOP"]
-        # All DOP fields in NAV-DOP are reported scaled by 100.
-        m_dop_g.labels(port).set(dop.gDOP / 100.0)
-        m_dop_p.labels(port).set(dop.pDOP / 100.0)
-        m_dop_t.labels(port).set(dop.tDOP / 100.0)
-        m_dop_v.labels(port).set(dop.vDOP / 100.0)
-        m_dop_h.labels(port).set(dop.hDOP / 100.0)
-        m_dop_n.labels(port).set(dop.nDOP / 100.0)
-        m_dop_e.labels(port).set(dop.eDOP / 100.0)
+        m_dop_g.labels(port).set(dop.gDOP)
+        m_dop_p.labels(port).set(dop.pDOP)
+        m_dop_t.labels(port).set(dop.tDOP)
+        m_dop_v.labels(port).set(dop.vDOP)
+        m_dop_h.labels(port).set(dop.hDOP)
+        m_dop_n.labels(port).set(dop.nDOP)
+        m_dop_e.labels(port).set(dop.eDOP)
         last_seen["NAV-DOP"] = now
 
     if "TIM-TP" in got:
