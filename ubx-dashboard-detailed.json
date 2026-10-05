@@ -99,6 +99,19 @@
   "uid": "ublox-gnss-detailed",
   "panels": [
     {
+      "type": "row",
+      "id": 16,
+      "title": "Verdict",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "panels": []
+    },
+    {
       "id": 1,
       "type": "state-timeline",
       "title": "Fix state",
@@ -109,9 +122,9 @@
       },
       "gridPos": {
         "h": 4,
-        "w": 24,
+        "w": 12,
         "x": 0,
-        "y": 0
+        "y": 1
       },
       "targets": [
         {
@@ -172,10 +185,86 @@
       }
     },
     {
-      "id": 2,
+      "id": 11,
+      "type": "state-timeline",
+      "title": "Spoofing detection state (receiver's own detector)",
+      "description": "NAV-STATUS flags2 spoofDetState. This is the receiver's only built-in spoofing flag and it misses many attacks: NO SPOOFING (green) is not proof of a clean sky. Cross-check with per-constellation usage, pseudorange residuals and ground speed below.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 12,
+        "x": 12,
+        "y": 1
+      },
+      "targets": [
+        {
+          "expr": "ublox_spoof_detection_state{port=\"$port\", instance=\"$instance\"}",
+          "legendFormat": "spoof state",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "UNKNOWN / OFF",
+                  "color": "text",
+                  "index": 0
+                },
+                "1": {
+                  "text": "NO SPOOFING",
+                  "color": "green",
+                  "index": 1
+                },
+                "2": {
+                  "text": "SPOOFING",
+                  "color": "red",
+                  "index": 2
+                },
+                "3": {
+                  "text": "MULTIPLE SPOOFING",
+                  "color": "dark-red",
+                  "index": 3
+                }
+              }
+            }
+          ],
+          "color": {
+            "mode": "fixed"
+          }
+        }
+      },
+      "options": {
+        "mergeValues": true,
+        "showValue": "always",
+        "alignValue": "center",
+        "rowHeight": 0.9
+      }
+    },
+    {
+      "type": "row",
+      "id": 17,
+      "title": "Timing",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 5
+      },
+      "panels": []
+    },
+    {
+      "id": 7,
       "type": "timeseries",
-      "title": "Satellite count by C/N0 threshold",
-      "description": "C/N0 = carrier-to-noise density in dB-Hz — how loud each satellite is above the noise floor. Lines show how many satellites exceed each threshold: >20 = detected, >30 = usable for a fix, >35 = strong, >40 = excellent. Need at least 4 sats above 30 for a 3D fix. 'max C/N0' (right axis, dashed) is the single best satellite — open sky with a healthy antenna should reach 40–48 dB-Hz; below 30 means the whole sky is marginal.",
+      "title": "Time accuracy (headline timing metric)",
+      "description": "Lower is better. NAV-PVT tAcc is the receiver's own estimate of how far off true GNSS time the PPS edge can be. PPS quantization error is the residual jitter between the integer-clock-tick PPS pulse and the true second boundary. <50 ns = healthy; >100 ns = warning; >1000 ns = PPS unsuitable for serious timing.",
       "datasource": {
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
@@ -184,38 +273,100 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 4
+        "y": 6
       },
       "targets": [
         {
-          "expr": "ublox_sat_count{port=\"$port\", instance=\"$instance\"}",
-          "legendFormat": "total in view",
+          "expr": "ublox_pvt_time_accuracy_ns{port=\"$port\", instance=\"$instance\"}",
+          "legendFormat": "NAV-PVT tAcc (ns)",
           "refId": "A"
         },
         {
-          "expr": "ublox_sat_cno_above_threshold{port=\"$port\", instance=\"$instance\",threshold=\"20\"}",
-          "legendFormat": "C/N0 > 20",
+          "expr": "ublox_pps_quantization_error_ps{port=\"$port\", instance=\"$instance\"} / 1000",
+          "legendFormat": "PPS qErr (ns)",
           "refId": "B"
         },
         {
-          "expr": "ublox_sat_cno_above_threshold{port=\"$port\", instance=\"$instance\",threshold=\"30\"}",
-          "legendFormat": "C/N0 > 30 (usable)",
+          "expr": "ublox_clock_time_accuracy_ns{port=\"$port\", instance=\"$instance\"}",
+          "legendFormat": "NAV-CLOCK tAcc (ns)",
           "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 5,
+            "showPoints": "never",
+            "scaleDistribution": {
+              "type": "log",
+              "log": 10
+            }
+          },
+          "unit": "ns",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 100
+              },
+              {
+                "color": "red",
+                "value": 1000
+              }
+            ]
+          }
+        }
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "last",
+            "min",
+            "max",
+            "mean"
+          ]
+        }
+      }
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "Position accuracy & satellites used in fix",
+      "description": "Horizontal/vertical accuracy in mm = NAV-PVT's own estimate of the position error. For a stationary timing receiver these should be small and stable; growing values mean fix quality is degrading even if the receiver still reports a 3D fix. 'Sats used' is the actual number of satellites contributing to the solution (right axis).",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 6
+      },
+      "targets": [
+        {
+          "expr": "ublox_pvt_horizontal_accuracy_mm{port=\"$port\", instance=\"$instance\"}",
+          "legendFormat": "horizontal acc (mm)",
+          "refId": "A"
         },
         {
-          "expr": "ublox_sat_cno_above_threshold{port=\"$port\", instance=\"$instance\",threshold=\"35\"}",
-          "legendFormat": "C/N0 > 35 (strong)",
-          "refId": "D"
+          "expr": "ublox_pvt_vertical_accuracy_mm{port=\"$port\", instance=\"$instance\"}",
+          "legendFormat": "vertical acc (mm)",
+          "refId": "B"
         },
         {
-          "expr": "ublox_sat_cno_above_threshold{port=\"$port\", instance=\"$instance\",threshold=\"40\"}",
-          "legendFormat": "C/N0 > 40 (excellent)",
-          "refId": "E"
-        },
-        {
-          "expr": "ublox_sat_max_cno{port=\"$port\", instance=\"$instance\"}",
-          "legendFormat": "max C/N0",
-          "refId": "F"
+          "expr": "ublox_pvt_sats_used{port=\"$port\", instance=\"$instance\"}",
+          "legendFormat": "sats used",
+          "refId": "C"
         }
       ],
       "fieldConfig": {
@@ -226,30 +377,13 @@
             "fillOpacity": 5,
             "showPoints": "never"
           },
-          "unit": "short",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "red",
-                "value": null
-              },
-              {
-                "color": "orange",
-                "value": 4
-              },
-              {
-                "color": "green",
-                "value": 8
-              }
-            ]
-          }
+          "unit": "lengthmm"
         },
         "overrides": [
           {
             "matcher": {
               "id": "byName",
-              "options": "max C/N0"
+              "options": "sats used"
             },
             "properties": [
               {
@@ -258,12 +392,19 @@
               },
               {
                 "id": "unit",
-                "value": "none"
+                "value": "short"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
               },
               {
                 "id": "custom.lineStyle",
                 "value": {
-                  "fill": "dash"
+                  "fill": "dot"
                 }
               }
             ]
@@ -277,16 +418,82 @@
           "calcs": [
             "last",
             "min",
-            "max"
+            "max",
+            "mean"
           ]
         }
       }
     },
     {
-      "id": 3,
+      "type": "row",
+      "id": 18,
+      "title": "Spoofing and jamming evidence",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 14
+      },
+      "panels": []
+    },
+    {
+      "id": 12,
       "type": "timeseries",
-      "title": "Front-end stress: mag I/Q (>200 saturates)",
-      "description": "ADC magnitude of the in-phase (I) and quadrature (Q) signal paths from MON-RF. Range 0–255. Normal is 100–160. Orange threshold at 160 = elevated stress. Red at 200 = front-end is clipping (saturating), which kills satellite reception even though the chip doesn't flag it as jamming. I and Q should track each other; a large split suggests an RF chain imbalance.",
+      "title": "Satellites tracked / used per constellation",
+      "description": "NAV-SAT per constellation. Tracked = C/N0 > 0; used = in the navigation solution. A healthy multi-constellation antenna uses satellites from every constellation it tracks. One constellation fully used while another is tracked with good C/N0 but not used means the receiver rejected the other as inconsistent: a spoofing signature.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 15
+      },
+      "targets": [
+        {
+          "expr": "ublox_sat_tracked{port=\"$port\", instance=\"$instance\"}",
+          "legendFormat": "{{gnss}} tracked",
+          "refId": "A"
+        },
+        {
+          "expr": "ublox_sat_used{port=\"$port\", instance=\"$instance\"}",
+          "legendFormat": "{{gnss}} used",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 5,
+            "showPoints": "never"
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "last",
+            "min",
+            "max",
+            "mean"
+          ]
+        }
+      }
+    },
+    {
+      "id": 13,
+      "type": "timeseries",
+      "title": "Pseudorange residual of used satellites per constellation",
+      "description": "NAV-SAT absolute pseudorange residual of used satellites: how far each measured range sits from the solved position/time. Healthy: under 10 m. Median of tens to hundreds of meters across a constellation means its ranges disagree with the sky: spoofing or severe multipath. A high max with a low median points at one bad satellite. Gaps mean no satellite of that constellation is used.",
       "datasource": {
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
@@ -295,47 +502,171 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 4
+        "y": 15
       },
       "targets": [
         {
-          "expr": "ublox_mag_i{port=\"$port\", instance=\"$instance\"}",
-          "legendFormat": "mag I",
+          "expr": "ublox_sat_pr_residual_median_m{port=\"$port\", instance=\"$instance\"}",
+          "legendFormat": "{{gnss}} median",
           "refId": "A"
         },
         {
-          "expr": "ublox_mag_q{port=\"$port\", instance=\"$instance\"}",
-          "legendFormat": "mag Q",
+          "expr": "ublox_sat_pr_residual_max_m{port=\"$port\", instance=\"$instance\"}",
+          "legendFormat": "{{gnss}} max",
           "refId": "B"
         }
       ],
       "fieldConfig": {
         "defaults": {
           "custom": {
-            "thresholdsStyle": {
-              "mode": "line"
-            }
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 5,
+            "showPoints": "never"
           },
-          "min": 0,
-          "max": 255,
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "orange",
-                "value": 160
-              },
-              {
-                "color": "red",
-                "value": 200
-              }
-            ]
+          "unit": "lengthm"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "last",
+            "min",
+            "max",
+            "mean"
+          ]
+        }
+      }
+    },
+    {
+      "id": 15,
+      "type": "table",
+      "title": "Satellites (NAV-SAT, one row per satellite)",
+      "description": "NAV-SAT per satellite: C/N0, signed pseudorange residual (used and unused satellites), used flag, qualityInd (0=no signal 1=searching 2=acquired 3=unusable 4=code locked 5-7=code and carrier locked), elevation and azimuth. Spoofed satellites tend to share a flat C/N0 with large residuals; real satellites cut from the solution usually sit low in elevation or C/N0.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 24,
+        "x": 0,
+        "y": 23
+      },
+      "targets": [
+        {
+          "expr": "max without (__name__) (ublox_sv_cno_dbhz{port=\"$port\", instance=\"$instance\"})",
+          "format": "table",
+          "instant": true,
+          "refId": "A"
+        },
+        {
+          "expr": "max without (__name__) (ublox_sv_pr_residual_m{port=\"$port\", instance=\"$instance\"})",
+          "format": "table",
+          "instant": true,
+          "refId": "B"
+        },
+        {
+          "expr": "max without (__name__) (ublox_sv_used{port=\"$port\", instance=\"$instance\"})",
+          "format": "table",
+          "instant": true,
+          "refId": "C"
+        },
+        {
+          "expr": "max without (__name__) (ublox_sv_quality{port=\"$port\", instance=\"$instance\"})",
+          "format": "table",
+          "instant": true,
+          "refId": "D"
+        },
+        {
+          "expr": "max without (__name__) (ublox_sv_elevation_deg{port=\"$port\", instance=\"$instance\"})",
+          "format": "table",
+          "instant": true,
+          "refId": "E"
+        },
+        {
+          "expr": "max without (__name__) (ublox_sv_azimuth_deg{port=\"$port\", instance=\"$instance\"})",
+          "format": "table",
+          "instant": true,
+          "refId": "F"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "__name__": true,
+              "instance": true,
+              "job": true,
+              "port": true
+            },
+            "indexByName": {
+              "gnss": 0,
+              "svid": 1
+            },
+            "renameByName": {
+              "Value #A": "C/N0 (dB-Hz)",
+              "Value #B": "PR residual (m)",
+              "Value #C": "Used",
+              "Value #D": "Quality",
+              "Value #E": "Elevation (deg)",
+              "Value #F": "Azimuth (deg)"
+            }
           }
         }
+      ],
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "displayName": "gnss",
+            "desc": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 14,
+      "type": "timeseries",
+      "title": "Ground speed (should be ~0 on a fixed antenna)",
+      "description": "NAV-PVT 2D ground speed. A fixed timing antenna reads near 0 with tens of mm/s of noise. A sustained speed of meters per second, together with a moving position, means the receiver is following a synthetic trajectory: spoofing.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 35
+      },
+      "targets": [
+        {
+          "expr": "ublox_pvt_ground_speed_mm_per_s{port=\"$port\", instance=\"$instance\"} / 1000",
+          "legendFormat": "ground speed",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 5,
+            "showPoints": "never"
+          },
+          "unit": "velocityms"
+        },
+        "overrides": []
       },
       "options": {
         "legend": {
@@ -362,8 +693,8 @@
       "gridPos": {
         "h": 8,
         "w": 12,
-        "x": 0,
-        "y": 12
+        "x": 12,
+        "y": 35
       },
       "targets": [
         {
@@ -450,847 +781,583 @@
       }
     },
     {
-      "id": 5,
-      "type": "timeseries",
-      "title": "Position (lat / lon / height MSL)",
-      "description": "Reported position from NAV-PVT. For a stationary timing receiver all three lines should be flat. A sudden shift in lat/lon without a corresponding hAcc increase is a strong spoofing indicator. Height (right axis) is above mean sea level.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
+      "type": "row",
+      "id": 19,
+      "title": "Sky and geometry",
+      "collapsed": true,
       "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 12
-      },
-      "targets": [
-        {
-          "expr": "ublox_pvt_latitude{port=\"$port\", instance=\"$instance\"}",
-          "legendFormat": "latitude (deg)",
-          "refId": "A"
-        },
-        {
-          "expr": "ublox_pvt_longitude{port=\"$port\", instance=\"$instance\"}",
-          "legendFormat": "longitude (deg)",
-          "refId": "B"
-        },
-        {
-          "expr": "ublox_pvt_height_msl_mm{port=\"$port\", instance=\"$instance\"}",
-          "legendFormat": "height MSL (mm)",
-          "refId": "C"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "drawStyle": "line",
-            "lineWidth": 2,
-            "fillOpacity": 5,
-            "showPoints": "never"
-          },
-          "unit": "degree",
-          "decimals": 7
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "height MSL (mm)"
-            },
-            "properties": [
-              {
-                "id": "custom.axisPlacement",
-                "value": "right"
-              },
-              {
-                "id": "unit",
-                "value": "lengthmm"
-              },
-              {
-                "id": "decimals",
-                "value": 0
-              },
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "green"
-                }
-              }
-            ]
-          }
-        ]
-      },
-      "options": {
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom",
-          "calcs": [
-            "last",
-            "min",
-            "max",
-            "mean"
-          ]
-        }
-      }
-    },
-    {
-      "id": 7,
-      "type": "timeseries",
-      "title": "Time accuracy (headline timing metric)",
-      "description": "Lower is better. NAV-PVT tAcc is the receiver's own estimate of how far off true GNSS time the PPS edge can be. PPS quantization error is the residual jitter between the integer-clock-tick PPS pulse and the true second boundary. <50 ns = healthy; >100 ns = warning; >1000 ns = PPS unsuitable for serious timing.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 20
-      },
-      "targets": [
-        {
-          "expr": "ublox_pvt_time_accuracy_ns{port=\"$port\", instance=\"$instance\"}",
-          "legendFormat": "NAV-PVT tAcc (ns)",
-          "refId": "A"
-        },
-        {
-          "expr": "ublox_pps_quantization_error_ps{port=\"$port\", instance=\"$instance\"} / 1000",
-          "legendFormat": "PPS qErr (ns)",
-          "refId": "B"
-        },
-        {
-          "expr": "ublox_clock_time_accuracy_ns{port=\"$port\", instance=\"$instance\"}",
-          "legendFormat": "NAV-CLOCK tAcc (ns)",
-          "refId": "C"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "drawStyle": "line",
-            "lineWidth": 2,
-            "fillOpacity": 5,
-            "showPoints": "never",
-            "scaleDistribution": {
-              "type": "log",
-              "log": 10
-            }
-          },
-          "unit": "ns",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "orange",
-                "value": 100
-              },
-              {
-                "color": "red",
-                "value": 1000
-              }
-            ]
-          }
-        }
-      },
-      "options": {
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom",
-          "calcs": [
-            "last",
-            "min",
-            "max",
-            "mean"
-          ]
-        }
-      }
-    },
-    {
-      "id": 8,
-      "type": "timeseries",
-      "title": "Local clock drift & frequency accuracy",
-      "description": "NAV-CLOCK drift = how fast the receiver's internal TCXO is gaining/losing relative to disciplined GNSS time. Frequency accuracy is the receiver's estimate of its own oscillator stability (lower = better TCXO). Sudden swings in drift indicate temperature shocks or holdover problems.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 20
-      },
-      "targets": [
-        {
-          "expr": "ublox_clock_drift_ns_per_s{port=\"$port\", instance=\"$instance\"}",
-          "legendFormat": "drift (ns/s)",
-          "refId": "A"
-        },
-        {
-          "expr": "ublox_clock_frequency_accuracy_ps_per_s{port=\"$port\", instance=\"$instance\"}",
-          "legendFormat": "freq acc (ps/s)",
-          "refId": "B"
-        },
-        {
-          "expr": "ublox_clock_bias_ns{port=\"$port\", instance=\"$instance\"}",
-          "legendFormat": "clock bias (ns)",
-          "refId": "C"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "drawStyle": "line",
-            "lineWidth": 2,
-            "fillOpacity": 5,
-            "showPoints": "never"
-          }
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "freq acc (ps/s)"
-            },
-            "properties": [
-              {
-                "id": "custom.axisPlacement",
-                "value": "right"
-              },
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "purple"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "clock bias (ns)"
-            },
-            "properties": [
-              {
-                "id": "custom.axisPlacement",
-                "value": "right"
-              },
-              {
-                "id": "custom.lineStyle",
-                "value": {
-                  "fill": "dash"
-                }
-              },
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "blue"
-                }
-              }
-            ]
-          }
-        ]
-      },
-      "options": {
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom",
-          "calcs": [
-            "last",
-            "min",
-            "max",
-            "mean"
-          ]
-        }
-      }
-    },
-    {
-      "id": 9,
-      "type": "timeseries",
-      "title": "DOP \u2014 satellite geometry quality (tDOP is the one for timing)",
-      "description": "Dilution of precision. tDOP is the timing-specific geometry factor \u2014 even with strong sats, bad sky geometry hurts PPS accuracy. <1 = excellent, 1\u20132 = good, 2\u20135 = acceptable, >5 = poor. Recurring tDOP spikes at the same time of day usually mean an antenna sees only part of the sky.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 28
-      },
-      "targets": [
-        {
-          "expr": "ublox_dop_time{port=\"$port\", instance=\"$instance\"}",
-          "legendFormat": "tDOP (timing)",
-          "refId": "A"
-        },
-        {
-          "expr": "ublox_dop_geometric{port=\"$port\", instance=\"$instance\"}",
-          "legendFormat": "gDOP",
-          "refId": "B"
-        },
-        {
-          "expr": "ublox_dop_position{port=\"$port\", instance=\"$instance\"}",
-          "legendFormat": "pDOP",
-          "refId": "C"
-        },
-        {
-          "expr": "ublox_dop_horizontal{port=\"$port\", instance=\"$instance\"}",
-          "legendFormat": "hDOP",
-          "refId": "D"
-        },
-        {
-          "expr": "ublox_dop_vertical{port=\"$port\", instance=\"$instance\"}",
-          "legendFormat": "vDOP",
-          "refId": "E"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "drawStyle": "line",
-            "lineWidth": 1,
-            "fillOpacity": 0,
-            "showPoints": "never"
-          },
-          "unit": "none",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "orange",
-                "value": 2
-              },
-              {
-                "color": "red",
-                "value": 5
-              }
-            ]
-          }
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "tDOP (timing)"
-            },
-            "properties": [
-              {
-                "id": "custom.lineWidth",
-                "value": 3
-              },
-              {
-                "id": "custom.fillOpacity",
-                "value": 10
-              },
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "yellow"
-                }
-              }
-            ]
-          }
-        ]
-      },
-      "options": {
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom",
-          "calcs": [
-            "last",
-            "min",
-            "max",
-            "mean"
-          ]
-        }
-      }
-    },
-    {
-      "id": 10,
-      "type": "timeseries",
-      "title": "Position accuracy & satellites used in fix",
-      "description": "Horizontal/vertical accuracy in mm = NAV-PVT's own estimate of the position error. For a stationary timing receiver these should be small and stable; growing values mean fix quality is degrading even if the receiver still reports a 3D fix. 'Sats used' is the actual number of satellites contributing to the solution (right axis).",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 28
-      },
-      "targets": [
-        {
-          "expr": "ublox_pvt_horizontal_accuracy_mm{port=\"$port\", instance=\"$instance\"}",
-          "legendFormat": "horizontal acc (mm)",
-          "refId": "A"
-        },
-        {
-          "expr": "ublox_pvt_vertical_accuracy_mm{port=\"$port\", instance=\"$instance\"}",
-          "legendFormat": "vertical acc (mm)",
-          "refId": "B"
-        },
-        {
-          "expr": "ublox_pvt_sats_used{port=\"$port\", instance=\"$instance\"}",
-          "legendFormat": "sats used",
-          "refId": "C"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "drawStyle": "line",
-            "lineWidth": 2,
-            "fillOpacity": 5,
-            "showPoints": "never"
-          },
-          "unit": "lengthmm"
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "sats used"
-            },
-            "properties": [
-              {
-                "id": "custom.axisPlacement",
-                "value": "right"
-              },
-              {
-                "id": "unit",
-                "value": "short"
-              },
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "green"
-                }
-              },
-              {
-                "id": "custom.lineStyle",
-                "value": {
-                  "fill": "dot"
-                }
-              }
-            ]
-          }
-        ]
-      },
-      "options": {
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom",
-          "calcs": [
-            "last",
-            "min",
-            "max",
-            "mean"
-          ]
-        }
-      }
-    },
-    {
-      "id": 11,
-      "type": "state-timeline",
-      "title": "Spoofing detection state (receiver's own detector)",
-      "description": "NAV-STATUS flags2 spoofDetState. This is the receiver's only built-in spoofing flag and it misses many attacks: NO SPOOFING (green) is not proof of a clean sky. Cross-check with per-constellation usage, pseudorange residuals and ground speed below.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "gridPos": {
-        "h": 4,
+        "h": 1,
         "w": 24,
         "x": 0,
-        "y": 36
+        "y": 43
       },
-      "targets": [
+      "panels": [
         {
-          "expr": "ublox_spoof_detection_state{port=\"$port\", instance=\"$instance\"}",
-          "legendFormat": "spoof state",
-          "refId": "A"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "mappings": [
+          "id": 2,
+          "type": "timeseries",
+          "title": "Satellite count by C/N0 threshold",
+          "description": "C/N0 = carrier-to-noise density in dB-Hz — how loud each satellite is above the noise floor. Lines show how many satellites exceed each threshold: >20 = detected, >30 = usable for a fix, >35 = strong, >40 = excellent. Need at least 4 sats above 30 for a 3D fix. 'max C/N0' (right axis, dashed) is the single best satellite — open sky with a healthy antenna should reach 40–48 dB-Hz; below 30 means the whole sky is marginal.",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 44
+          },
+          "targets": [
             {
-              "type": "value",
-              "options": {
-                "0": {
-                  "text": "UNKNOWN / OFF",
-                  "color": "text",
-                  "index": 0
-                },
-                "1": {
-                  "text": "NO SPOOFING",
-                  "color": "green",
-                  "index": 1
-                },
-                "2": {
-                  "text": "SPOOFING",
-                  "color": "red",
-                  "index": 2
-                },
-                "3": {
-                  "text": "MULTIPLE SPOOFING",
-                  "color": "dark-red",
-                  "index": 3
-                }
-              }
+              "expr": "ublox_sat_count{port=\"$port\", instance=\"$instance\"}",
+              "legendFormat": "total in view",
+              "refId": "A"
+            },
+            {
+              "expr": "ublox_sat_cno_above_threshold{port=\"$port\", instance=\"$instance\",threshold=\"20\"}",
+              "legendFormat": "C/N0 > 20",
+              "refId": "B"
+            },
+            {
+              "expr": "ublox_sat_cno_above_threshold{port=\"$port\", instance=\"$instance\",threshold=\"30\"}",
+              "legendFormat": "C/N0 > 30 (usable)",
+              "refId": "C"
+            },
+            {
+              "expr": "ublox_sat_cno_above_threshold{port=\"$port\", instance=\"$instance\",threshold=\"35\"}",
+              "legendFormat": "C/N0 > 35 (strong)",
+              "refId": "D"
+            },
+            {
+              "expr": "ublox_sat_cno_above_threshold{port=\"$port\", instance=\"$instance\",threshold=\"40\"}",
+              "legendFormat": "C/N0 > 40 (excellent)",
+              "refId": "E"
+            },
+            {
+              "expr": "ublox_sat_max_cno{port=\"$port\", instance=\"$instance\"}",
+              "legendFormat": "max C/N0",
+              "refId": "F"
             }
           ],
-          "color": {
-            "mode": "fixed"
-          }
-        }
-      },
-      "options": {
-        "mergeValues": true,
-        "showValue": "always",
-        "alignValue": "center",
-        "rowHeight": 0.9
-      }
-    },
-    {
-      "id": 12,
-      "type": "timeseries",
-      "title": "Satellites tracked / used per constellation",
-      "description": "NAV-SAT per constellation. Tracked = C/N0 > 0; used = in the navigation solution. A healthy multi-constellation antenna uses satellites from every constellation it tracks. One constellation fully used while another is tracked with good C/N0 but not used means the receiver rejected the other as inconsistent: a spoofing signature.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 40
-      },
-      "targets": [
-        {
-          "expr": "ublox_sat_tracked{port=\"$port\", instance=\"$instance\"}",
-          "legendFormat": "{{gnss}} tracked",
-          "refId": "A"
-        },
-        {
-          "expr": "ublox_sat_used{port=\"$port\", instance=\"$instance\"}",
-          "legendFormat": "{{gnss}} used",
-          "refId": "B"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "drawStyle": "line",
-            "lineWidth": 2,
-            "fillOpacity": 5,
-            "showPoints": "never"
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 5,
+                "showPoints": "never"
+              },
+              "unit": "short",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": null
+                  },
+                  {
+                    "color": "orange",
+                    "value": 4
+                  },
+                  {
+                    "color": "green",
+                    "value": 8
+                  }
+                ]
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "max C/N0"
+                },
+                "properties": [
+                  {
+                    "id": "custom.axisPlacement",
+                    "value": "right"
+                  },
+                  {
+                    "id": "unit",
+                    "value": "none"
+                  },
+                  {
+                    "id": "custom.lineStyle",
+                    "value": {
+                      "fill": "dash"
+                    }
+                  }
+                ]
+              }
+            ]
           },
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom",
-          "calcs": [
-            "last",
-            "min",
-            "max",
-            "mean"
-          ]
-        }
-      }
-    },
-    {
-      "id": 13,
-      "type": "timeseries",
-      "title": "Pseudorange residual of used satellites per constellation",
-      "description": "NAV-SAT absolute pseudorange residual of used satellites: how far each measured range sits from the solved position/time. Healthy: under 10 m. Median of tens to hundreds of meters across a constellation means its ranges disagree with the sky: spoofing or severe multipath. A high max with a low median points at one bad satellite. Gaps mean no satellite of that constellation is used.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 40
-      },
-      "targets": [
-        {
-          "expr": "ublox_sat_pr_residual_median_m{port=\"$port\", instance=\"$instance\"}",
-          "legendFormat": "{{gnss}} median",
-          "refId": "A"
-        },
-        {
-          "expr": "ublox_sat_pr_residual_max_m{port=\"$port\", instance=\"$instance\"}",
-          "legendFormat": "{{gnss}} max",
-          "refId": "B"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "drawStyle": "line",
-            "lineWidth": 2,
-            "fillOpacity": 5,
-            "showPoints": "never"
-          },
-          "unit": "lengthm"
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom",
-          "calcs": [
-            "last",
-            "min",
-            "max",
-            "mean"
-          ]
-        }
-      }
-    },
-    {
-      "id": 14,
-      "type": "timeseries",
-      "title": "Ground speed (should be ~0 on a fixed antenna)",
-      "description": "NAV-PVT 2D ground speed. A fixed timing antenna reads near 0 with tens of mm/s of noise. A sustained speed of meters per second, together with a moving position, means the receiver is following a synthetic trajectory: spoofing.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "gridPos": {
-        "h": 6,
-        "w": 24,
-        "x": 0,
-        "y": 48
-      },
-      "targets": [
-        {
-          "expr": "ublox_pvt_ground_speed_mm_per_s{port=\"$port\", instance=\"$instance\"} / 1000",
-          "legendFormat": "ground speed",
-          "refId": "A"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "drawStyle": "line",
-            "lineWidth": 2,
-            "fillOpacity": 5,
-            "showPoints": "never"
-          },
-          "unit": "velocityms"
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom",
-          "calcs": [
-            "last",
-            "min",
-            "max",
-            "mean"
-          ]
-        }
-      }
-    },
-    {
-      "id": 15,
-      "type": "table",
-      "title": "Satellites (NAV-SAT, one row per satellite)",
-      "description": "NAV-SAT per satellite: C/N0, signed pseudorange residual (used and unused satellites), used flag, qualityInd (0=no signal 1=searching 2=acquired 3=unusable 4=code locked 5-7=code and carrier locked), elevation and azimuth. Spoofed satellites tend to share a flat C/N0 with large residuals; real satellites cut from the solution usually sit low in elevation or C/N0.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "gridPos": {
-        "h": 12,
-        "w": 24,
-        "x": 0,
-        "y": 54
-      },
-      "targets": [
-        {
-          "expr": "max without (__name__) (ublox_sv_cno_dbhz{port=\"$port\", instance=\"$instance\"})",
-          "format": "table",
-          "instant": true,
-          "refId": "A"
-        },
-        {
-          "expr": "max without (__name__) (ublox_sv_pr_residual_m{port=\"$port\", instance=\"$instance\"})",
-          "format": "table",
-          "instant": true,
-          "refId": "B"
-        },
-        {
-          "expr": "max without (__name__) (ublox_sv_used{port=\"$port\", instance=\"$instance\"})",
-          "format": "table",
-          "instant": true,
-          "refId": "C"
-        },
-        {
-          "expr": "max without (__name__) (ublox_sv_quality{port=\"$port\", instance=\"$instance\"})",
-          "format": "table",
-          "instant": true,
-          "refId": "D"
-        },
-        {
-          "expr": "max without (__name__) (ublox_sv_elevation_deg{port=\"$port\", instance=\"$instance\"})",
-          "format": "table",
-          "instant": true,
-          "refId": "E"
-        },
-        {
-          "expr": "max without (__name__) (ublox_sv_azimuth_deg{port=\"$port\", instance=\"$instance\"})",
-          "format": "table",
-          "instant": true,
-          "refId": "F"
-        }
-      ],
-      "transformations": [
-        {
-          "id": "merge",
-          "options": {}
-        },
-        {
-          "id": "organize",
           "options": {
-            "excludeByName": {
-              "Time": true,
-              "__name__": true,
-              "instance": true,
-              "job": true,
-              "port": true
+            "legend": {
+              "displayMode": "table",
+              "placement": "bottom",
+              "calcs": [
+                "last",
+                "min",
+                "max"
+              ]
+            }
+          }
+        },
+        {
+          "id": 9,
+          "type": "timeseries",
+          "title": "DOP \u2014 satellite geometry quality (tDOP is the one for timing)",
+          "description": "Dilution of precision. tDOP is the timing-specific geometry factor \u2014 even with strong sats, bad sky geometry hurts PPS accuracy. <1 = excellent, 1\u20132 = good, 2\u20135 = acceptable, >5 = poor. Recurring tDOP spikes at the same time of day usually mean an antenna sees only part of the sky.",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 44
+          },
+          "targets": [
+            {
+              "expr": "ublox_dop_time{port=\"$port\", instance=\"$instance\"}",
+              "legendFormat": "tDOP (timing)",
+              "refId": "A"
             },
-            "indexByName": {
-              "gnss": 0,
-              "svid": 1
+            {
+              "expr": "ublox_dop_geometric{port=\"$port\", instance=\"$instance\"}",
+              "legendFormat": "gDOP",
+              "refId": "B"
             },
-            "renameByName": {
-              "Value #A": "C/N0 (dB-Hz)",
-              "Value #B": "PR residual (m)",
-              "Value #C": "Used",
-              "Value #D": "Quality",
-              "Value #E": "Elevation (deg)",
-              "Value #F": "Azimuth (deg)"
+            {
+              "expr": "ublox_dop_position{port=\"$port\", instance=\"$instance\"}",
+              "legendFormat": "pDOP",
+              "refId": "C"
+            },
+            {
+              "expr": "ublox_dop_horizontal{port=\"$port\", instance=\"$instance\"}",
+              "legendFormat": "hDOP",
+              "refId": "D"
+            },
+            {
+              "expr": "ublox_dop_vertical{port=\"$port\", instance=\"$instance\"}",
+              "legendFormat": "vDOP",
+              "refId": "E"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 1,
+                "fillOpacity": 0,
+                "showPoints": "never"
+              },
+              "unit": "none",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "orange",
+                    "value": 2
+                  },
+                  {
+                    "color": "red",
+                    "value": 5
+                  }
+                ]
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "tDOP (timing)"
+                },
+                "properties": [
+                  {
+                    "id": "custom.lineWidth",
+                    "value": 3
+                  },
+                  {
+                    "id": "custom.fillOpacity",
+                    "value": 10
+                  },
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "yellow"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "options": {
+            "legend": {
+              "displayMode": "table",
+              "placement": "bottom",
+              "calcs": [
+                "last",
+                "min",
+                "max",
+                "mean"
+              ]
             }
           }
         }
-      ],
-      "options": {
-        "showHeader": true,
-        "sortBy": [
-          {
-            "displayName": "gnss",
-            "desc": false
-          }
-        ]
-      }
+      ]
     },
     {
-      "id": 6,
-      "type": "heatmap",
-      "title": "L1 band spectrogram (MON-SPAN waterfall)",
-      "description": "MON-SPAN waterfall. Each row is a time sample; Y axis is frequency in MHz across the L1 band (~1525–1653 MHz, 128 MHz window centered on 1589 MHz). Color intensity = signal amplitude. A healthy antenna shows a smooth dome shape around 1575 MHz (GPS L1). A bright horizontal stripe at a fixed frequency = narrowband interferer. Note: MON-SPAN only sees this 128 MHz window — out-of-band interferers are invisible here but can still saturate the front-end (check magI/Q).",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
+      "type": "row",
+      "id": 20,
+      "title": "Receiver internals",
+      "collapsed": true,
       "gridPos": {
-        "h": 14,
+        "h": 1,
         "w": 24,
         "x": 0,
-        "y": 66
+        "y": 44
       },
-      "targets": [
+      "panels": [
         {
-          "expr": "ublox_spectrum_amplitude{port=\"$port\", instance=\"$instance\"}",
-          "legendFormat": "{{freq_mhz}}",
-          "refId": "A",
-          "format": "time_series"
-        }
-      ],
-      "options": {
-        "calculate": false,
-        "yAxis": {
-          "axisPlacement": "left",
-          "reverse": false,
-          "unit": "none",
-          "axisLabel": "Frequency (MHz)"
-        },
-        "rowsFrame": {
-          "layout": "auto"
-        },
-        "color": {
-          "mode": "scheme",
-          "scheme": "Turbo",
-          "fill": "dark-orange",
-          "scale": "exponential",
-          "exponent": 0.5,
-          "steps": 128,
-          "reverse": false
-        },
-        "cellGap": 0,
-        "cellValues": {
-          "unit": "none"
-        },
-        "filterValues": {
-          "le": 1e-09
-        },
-        "tooltip": {
-          "show": true,
-          "yHistogram": false,
-          "mode": "single"
-        },
-        "legend": {
-          "show": true
-        },
-        "exemplars": {
-          "color": "rgba(255,0,255,0.7)"
-        }
-      },
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "scaleDistribution": {
-              "type": "linear"
+          "id": 3,
+          "type": "timeseries",
+          "title": "Front-end stress: mag I/Q (>200 saturates)",
+          "description": "ADC magnitude of the in-phase (I) and quadrature (Q) signal paths from MON-RF. Range 0–255. Normal is 100–160. Orange threshold at 160 = elevated stress. Red at 200 = front-end is clipping (saturating), which kills satellite reception even though the chip doesn't flag it as jamming. I and Q should track each other; a large split suggests an RF chain imbalance.",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 45
+          },
+          "targets": [
+            {
+              "expr": "ublox_mag_i{port=\"$port\", instance=\"$instance\"}",
+              "legendFormat": "mag I",
+              "refId": "A"
             },
-            "hideFrom": {
-              "tooltip": false,
-              "viz": false,
-              "legend": false
+            {
+              "expr": "ublox_mag_q{port=\"$port\", instance=\"$instance\"}",
+              "legendFormat": "mag Q",
+              "refId": "B"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "thresholdsStyle": {
+                  "mode": "line"
+                }
+              },
+              "min": 0,
+              "max": 255,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "orange",
+                    "value": 160
+                  },
+                  {
+                    "color": "red",
+                    "value": 200
+                  }
+                ]
+              }
+            }
+          },
+          "options": {
+            "legend": {
+              "displayMode": "table",
+              "placement": "bottom",
+              "calcs": [
+                "last",
+                "min",
+                "max",
+                "mean"
+              ]
+            }
+          }
+        },
+        {
+          "id": 8,
+          "type": "timeseries",
+          "title": "Local clock drift & frequency accuracy",
+          "description": "NAV-CLOCK drift = how fast the receiver's internal TCXO is gaining/losing relative to disciplined GNSS time. Frequency accuracy is the receiver's estimate of its own oscillator stability (lower = better TCXO). Sudden swings in drift indicate temperature shocks or holdover problems.",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 45
+          },
+          "targets": [
+            {
+              "expr": "ublox_clock_drift_ns_per_s{port=\"$port\", instance=\"$instance\"}",
+              "legendFormat": "drift (ns/s)",
+              "refId": "A"
+            },
+            {
+              "expr": "ublox_clock_frequency_accuracy_ps_per_s{port=\"$port\", instance=\"$instance\"}",
+              "legendFormat": "freq acc (ps/s)",
+              "refId": "B"
+            },
+            {
+              "expr": "ublox_clock_bias_ns{port=\"$port\", instance=\"$instance\"}",
+              "legendFormat": "clock bias (ns)",
+              "refId": "C"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 5,
+                "showPoints": "never"
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "freq acc (ps/s)"
+                },
+                "properties": [
+                  {
+                    "id": "custom.axisPlacement",
+                    "value": "right"
+                  },
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "purple"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "clock bias (ns)"
+                },
+                "properties": [
+                  {
+                    "id": "custom.axisPlacement",
+                    "value": "right"
+                  },
+                  {
+                    "id": "custom.lineStyle",
+                    "value": {
+                      "fill": "dash"
+                    }
+                  },
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "blue"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "options": {
+            "legend": {
+              "displayMode": "table",
+              "placement": "bottom",
+              "calcs": [
+                "last",
+                "min",
+                "max",
+                "mean"
+              ]
+            }
+          }
+        },
+        {
+          "id": 5,
+          "type": "timeseries",
+          "title": "Position (lat / lon / height MSL)",
+          "description": "Reported position from NAV-PVT. For a stationary timing receiver all three lines should be flat. A sudden shift in lat/lon without a corresponding hAcc increase is a strong spoofing indicator. Height (right axis) is above mean sea level.",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 24,
+            "x": 0,
+            "y": 53
+          },
+          "targets": [
+            {
+              "expr": "ublox_pvt_latitude{port=\"$port\", instance=\"$instance\"}",
+              "legendFormat": "latitude (deg)",
+              "refId": "A"
+            },
+            {
+              "expr": "ublox_pvt_longitude{port=\"$port\", instance=\"$instance\"}",
+              "legendFormat": "longitude (deg)",
+              "refId": "B"
+            },
+            {
+              "expr": "ublox_pvt_height_msl_mm{port=\"$port\", instance=\"$instance\"}",
+              "legendFormat": "height MSL (mm)",
+              "refId": "C"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 5,
+                "showPoints": "never"
+              },
+              "unit": "degree",
+              "decimals": 7
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "height MSL (mm)"
+                },
+                "properties": [
+                  {
+                    "id": "custom.axisPlacement",
+                    "value": "right"
+                  },
+                  {
+                    "id": "unit",
+                    "value": "lengthmm"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 0
+                  },
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "green"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "options": {
+            "legend": {
+              "displayMode": "table",
+              "placement": "bottom",
+              "calcs": [
+                "last",
+                "min",
+                "max",
+                "mean"
+              ]
+            }
+          }
+        },
+        {
+          "id": 6,
+          "type": "heatmap",
+          "title": "L1 band spectrogram (MON-SPAN waterfall)",
+          "description": "MON-SPAN waterfall. Each row is a time sample; Y axis is frequency in MHz across the L1 band (~1525–1653 MHz, 128 MHz window centered on 1589 MHz). Color intensity = signal amplitude. A healthy antenna shows a smooth dome shape around 1575 MHz (GPS L1). A bright horizontal stripe at a fixed frequency = narrowband interferer. Note: MON-SPAN only sees this 128 MHz window — out-of-band interferers are invisible here but can still saturate the front-end (check magI/Q).",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "gridPos": {
+            "h": 14,
+            "w": 24,
+            "x": 0,
+            "y": 61
+          },
+          "targets": [
+            {
+              "expr": "ublox_spectrum_amplitude{port=\"$port\", instance=\"$instance\"}",
+              "legendFormat": "{{freq_mhz}}",
+              "refId": "A",
+              "format": "time_series"
+            }
+          ],
+          "options": {
+            "calculate": false,
+            "yAxis": {
+              "axisPlacement": "left",
+              "reverse": false,
+              "unit": "none",
+              "axisLabel": "Frequency (MHz)"
+            },
+            "rowsFrame": {
+              "layout": "auto"
+            },
+            "color": {
+              "mode": "scheme",
+              "scheme": "Turbo",
+              "fill": "dark-orange",
+              "scale": "exponential",
+              "exponent": 0.5,
+              "steps": 128,
+              "reverse": false
+            },
+            "cellGap": 0,
+            "cellValues": {
+              "unit": "none"
+            },
+            "filterValues": {
+              "le": 1e-09
+            },
+            "tooltip": {
+              "show": true,
+              "yHistogram": false,
+              "mode": "single"
+            },
+            "legend": {
+              "show": true
+            },
+            "exemplars": {
+              "color": "rgba(255,0,255,0.7)"
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "hideFrom": {
+                  "tooltip": false,
+                  "viz": false,
+                  "legend": false
+                }
+              }
             }
           }
         }
-      }
+      ]
     }
   ]
 }
