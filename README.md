@@ -70,7 +70,7 @@ Verify with `curl http://localhost:9021/metrics`.
 
 > **gpsd will fight you for the serial device.** If gpsd is running and
 > bound to your device, stop it (`systemctl stop gpsd gpsd.socket`) before
-> starting the exporter — or use a different serial port.
+> starting the exporter, or use a different serial port.
 
 ### systemd
 
@@ -112,10 +112,9 @@ one to keep on a wall display. Drill into the detail dashboard when a tile
 goes red.
 
 Each dashboard has `Instance` and `Port` template variables that
-auto-populate from the `ublox_fix` series — useful when running exporters
-on multiple nodes or with multiple serial ports.
+auto-populate from the `ublox_fix` series.
 
-## Troubleshooting (the three you'll actually hit)
+## Troubleshooting (the three you'll hit)
 
 1. **All metrics flat / missing** — gpsd is holding the device, OR the
    service is running but the receiver isn't responding. Check
