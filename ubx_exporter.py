@@ -25,6 +25,7 @@ which receiver to plot. The HTTP listener and the --baud / --basic-interval
 """
 
 import argparse
+import statistics
 import sys
 import threading
 import time
@@ -36,6 +37,13 @@ from prometheus_client import start_http_server, Gauge
 
 LBL = ["port"]
 LBL_BLK = ["port", "rf_block"]
+LBL_GNSS = ["port", "gnss"]
+
+# NAV-SAT gnssId -> constellation name for the `gnss` label.
+GNSS_NAMES = {0: "GPS", 1: "SBAS", 2: "Galileo", 3: "BeiDou",
+              4: "IMES", 5: "QZSS", 6: "GLONASS", 7: "NavIC"}
+# port -> gnssIds exported so far; a constellation that leaves NAV-SAT reads 0/NaN, not stale.
+seen_gnss = {}
 
 m_fix       = Gauge("ublox_fix", "GPS fix (0=none 2=2D 3=3D 5=time)", LBL)
 m_ant       = Gauge("ublox_antenna_status", "Antenna status (1=DK 2=OK 3=SHORT 4=OPEN)", LBL)
@@ -49,6 +57,35 @@ m_cno_above = Gauge("ublox_sat_cno_above_threshold",
                     "Number of sats with C/N0 above given threshold (dB-Hz)",
                     LBL + ["threshold"])
 m_max_cno   = Gauge("ublox_sat_max_cno", "Best C/N0 seen this poll (dB-Hz)", LBL)
+m_sat_tracked = Gauge(
+    "ublox_sat_tracked",
+    "NAV-SAT satellites tracked (C/N0 > 0) per constellation. A healthy multi-constellation "
+    "antenna tracks every configured constellation; one constellation tracked while the others "
+    "drop to 0 or go unused (ublox_sat_used) is a spoofing or band-limited-jamming signature.",
+    LBL_GNSS,
+)
+m_sat_used = Gauge(
+    "ublox_sat_used",
+    "NAV-SAT satellites used in the navigation solution (svUsed flag) per constellation. "
+    "Strong satellites tracked but not used in one constellation while another is fully used "
+    "means the receiver rejected them as inconsistent with the solution: suspect spoofing.",
+    LBL_GNSS,
+)
+m_sat_prres_median = Gauge(
+    "ublox_sat_pr_residual_median_m",
+    "NAV-SAT median absolute pseudorange residual of used satellites per constellation, meters. "
+    "How far each measured range sits from the solved position/time. Healthy: under 10 m. "
+    "Tens to hundreds of meters across a whole constellation means the ranges disagree with "
+    "the sky: spoofing or severe multipath. NaN when no satellite of the constellation is used.",
+    LBL_GNSS,
+)
+m_sat_prres_max = Gauge(
+    "ublox_sat_pr_residual_max_m",
+    "NAV-SAT maximum absolute pseudorange residual of used satellites per constellation, "
+    "meters. A single outlier points at one bad satellite or multipath; compare with the "
+    "median to tell that apart from a constellation-wide offset. NaN when none is used.",
+    LBL_GNSS,
+)
 m_uptime    = Gauge("ublox_sample_age_seconds",
                     "Seconds since last successful sample (for each message family)",
                     LBL + ["family"])
@@ -119,6 +156,22 @@ m_pvt_hmsl = Gauge(
     "NAV-PVT height above mean sea level, millimeters. More operationally useful than "
     "ellipsoidal height. For a roof-mounted antenna this should be constant; drift indicates "
     "multipath or spoofing.",
+    LBL,
+)
+
+m_pvt_gspeed = Gauge(
+    "ublox_pvt_ground_speed_mm_per_s",
+    "NAV-PVT 2D ground speed, millimeters per second. A fixed timing antenna should read "
+    "near 0 (tens of mm/s of noise). A sustained speed of meters per second on a fixed "
+    "antenna means the receiver is following a synthetic trajectory: spoofing.",
+    LBL,
+)
+m_spoof = Gauge(
+    "ublox_spoof_detection_state",
+    "NAV-STATUS flags2 spoofDetState: 0=unknown or deactivated, 1=no spoofing indicated, "
+    "2=spoofing indicated, 3=multiple spoofing indications. The receiver's own detector; "
+    "it misses many attacks, so 1 is not proof of a clean sky. Cross-check per-constellation "
+    "usage, pseudorange residuals and ground speed.",
     LBL,
 )
 
@@ -249,6 +302,7 @@ def update_basic(port, ser, ubr, last_seen):
 
     if "NAV-STATUS" in got:
         m_fix.labels(port).set(got["NAV-STATUS"].gpsFix)
+        m_spoof.labels(port).set(got["NAV-STATUS"].spoofDetState)
         last_seen["NAV-STATUS"] = now
 
     if "NAV-SAT" in got:
@@ -258,6 +312,21 @@ def update_basic(port, ser, ubr, last_seen):
         for thr in (20, 30, 35, 40):
             m_cno_above.labels(port, str(thr)).set(sum(1 for c in cnos if c > thr))
         m_max_cno.labels(port).set(max(cnos) if cnos else 0)
+        seen = seen_gnss.setdefault(port, set())
+        per_gnss = {g: {"tracked": 0, "res": []} for g in seen}
+        for i in range(1, sat.numSvs + 1):
+            sv = per_gnss.setdefault(field(sat, "gnssId", i), {"tracked": 0, "res": []})
+            sv["tracked"] += field(sat, "cno", i) > 0
+            if field(sat, "svUsed", i):
+                sv["res"].append(abs(field(sat, "prRes", i)))
+        for gnss_id, sv in per_gnss.items():
+            name = GNSS_NAMES.get(gnss_id, str(gnss_id))
+            res = sv["res"]
+            m_sat_tracked.labels(port, name).set(sv["tracked"])
+            m_sat_used.labels(port, name).set(len(res))
+            m_sat_prres_median.labels(port, name).set(statistics.median(res) if res else float("nan"))
+            m_sat_prres_max.labels(port, name).set(max(res) if res else float("nan"))
+        seen.update(per_gnss)
         last_seen["NAV-SAT"] = now
 
     if "NAV-PVT" in got:
@@ -270,6 +339,7 @@ def update_basic(port, ser, ubr, last_seen):
         m_pvt_lat.labels(port).set(pvt.lat)
         m_pvt_lon.labels(port).set(pvt.lon)
         m_pvt_hmsl.labels(port).set(pvt.hMSL)
+        m_pvt_gspeed.labels(port).set(pvt.gSpeed)
         last_seen["NAV-PVT"] = now
 
     if "NAV-CLOCK" in got:

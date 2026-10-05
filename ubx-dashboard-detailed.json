@@ -917,6 +917,229 @@
       }
     },
     {
+      "id": 11,
+      "type": "state-timeline",
+      "title": "Spoofing detection state (receiver's own detector)",
+      "description": "NAV-STATUS flags2 spoofDetState. This is the receiver's only built-in spoofing flag and it misses many attacks: NO SPOOFING (green) is not proof of a clean sky. Cross-check with per-constellation usage, pseudorange residuals and ground speed below.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 24,
+        "x": 0,
+        "y": 36
+      },
+      "targets": [
+        {
+          "expr": "ublox_spoof_detection_state{port=\"$port\", instance=\"$instance\"}",
+          "legendFormat": "spoof state",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "UNKNOWN / OFF",
+                  "color": "text",
+                  "index": 0
+                },
+                "1": {
+                  "text": "NO SPOOFING",
+                  "color": "green",
+                  "index": 1
+                },
+                "2": {
+                  "text": "SPOOFING",
+                  "color": "red",
+                  "index": 2
+                },
+                "3": {
+                  "text": "MULTIPLE SPOOFING",
+                  "color": "dark-red",
+                  "index": 3
+                }
+              }
+            }
+          ],
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        }
+      },
+      "options": {
+        "mergeValues": true,
+        "showValue": "always",
+        "alignValue": "center",
+        "rowHeight": 0.9
+      }
+    },
+    {
+      "id": 12,
+      "type": "timeseries",
+      "title": "Satellites tracked / used per constellation",
+      "description": "NAV-SAT per constellation. Tracked = C/N0 > 0; used = in the navigation solution. A healthy multi-constellation antenna uses satellites from every constellation it tracks. One constellation fully used while another is tracked with good C/N0 but not used means the receiver rejected the other as inconsistent: a spoofing signature.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 40
+      },
+      "targets": [
+        {
+          "expr": "ublox_sat_tracked{port=\"$port\", instance=\"$instance\"}",
+          "legendFormat": "{{gnss}} tracked",
+          "refId": "A"
+        },
+        {
+          "expr": "ublox_sat_used{port=\"$port\", instance=\"$instance\"}",
+          "legendFormat": "{{gnss}} used",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 5,
+            "showPoints": "never"
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "last",
+            "min",
+            "max",
+            "mean"
+          ]
+        }
+      }
+    },
+    {
+      "id": 13,
+      "type": "timeseries",
+      "title": "Pseudorange residual of used satellites per constellation",
+      "description": "NAV-SAT absolute pseudorange residual of used satellites: how far each measured range sits from the solved position/time. Healthy: under 10 m. Median of tens to hundreds of meters across a constellation means its ranges disagree with the sky: spoofing or severe multipath. A high max with a low median points at one bad satellite. Gaps mean no satellite of that constellation is used.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 40
+      },
+      "targets": [
+        {
+          "expr": "ublox_sat_pr_residual_median_m{port=\"$port\", instance=\"$instance\"}",
+          "legendFormat": "{{gnss}} median",
+          "refId": "A"
+        },
+        {
+          "expr": "ublox_sat_pr_residual_max_m{port=\"$port\", instance=\"$instance\"}",
+          "legendFormat": "{{gnss}} max",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 5,
+            "showPoints": "never"
+          },
+          "unit": "lengthm"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "last",
+            "min",
+            "max",
+            "mean"
+          ]
+        }
+      }
+    },
+    {
+      "id": 14,
+      "type": "timeseries",
+      "title": "Ground speed (should be ~0 on a fixed antenna)",
+      "description": "NAV-PVT 2D ground speed. A fixed timing antenna reads near 0 with tens of mm/s of noise. A sustained speed of meters per second, together with a moving position, means the receiver is following a synthetic trajectory: spoofing.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 24,
+        "x": 0,
+        "y": 48
+      },
+      "targets": [
+        {
+          "expr": "ublox_pvt_ground_speed_mm_per_s{port=\"$port\", instance=\"$instance\"} / 1000",
+          "legendFormat": "ground speed",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 5,
+            "showPoints": "never"
+          },
+          "unit": "velocityms"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "last",
+            "min",
+            "max",
+            "mean"
+          ]
+        }
+      }
+    },
+    {
       "id": 6,
       "type": "heatmap",
       "title": "L1 band spectrogram (MON-SPAN waterfall)",
@@ -929,7 +1152,7 @@
         "h": 14,
         "w": 24,
         "x": 0,
-        "y": 36
+        "y": 54
       },
       "targets": [
         {
