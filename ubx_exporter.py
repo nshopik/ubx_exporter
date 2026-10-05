@@ -54,7 +54,7 @@ m_magi      = Gauge("ublox_mag_i", "ADC I magnitude (>200 = saturating)", LBL)
 m_magq      = Gauge("ublox_mag_q", "ADC Q magnitude (>200 = saturating)", LBL)
 m_noise     = Gauge("ublox_noise_per_ms", "Noise level (lower=better; <70 good)", LBL)
 m_agc       = Gauge("ublox_agc_count", "AGC counter (0-8191)", LBL)
-m_jam       = Gauge("ublox_jam_indicator", "Broadband jamming (0-255; >45 warning)", LBL)
+m_jam       = Gauge("ublox_jam_indicator", "CW (narrow-band) interference indicator (0-255); threshold from an unjammed baseline", LBL)
 m_nsv       = Gauge("ublox_sat_count", "Satellites in NAV-SAT report", LBL)
 m_cno_above = Gauge("ublox_sat_cno_above_threshold",
                     "Number of sats with C/N0 above given threshold (dB-Hz)",

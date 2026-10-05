@@ -9,8 +9,9 @@ receiver supporting those messages.
 
 Two Grafana dashboards ship with it:
 
-- **`ubx-dashboard-overview.json`** — on-call view, 8 red/yellow/green stat
-  tiles + 6 h fix-state strip + 30 min spectrogram. Green wall = OK.
+- **`ubx-dashboard-overview.json`** — on-call view, 8 stat tiles (7
+  red/yellow/green, jam indicator plain) + 6 h fix-state strip + 30 min
+  spectrogram. Green tiles = OK.
 - **`ubx-dashboard-detailed.json`** — detail view for forensics, 15 panels
   covering every exposed metric with thresholds and descriptions.
 

@@ -354,7 +354,7 @@
       "id": 4,
       "type": "timeseries",
       "title": "Noise floor & jamming indicator",
-      "description": "Three MON-RF metrics on one panel. noisePerMS: receiver noise floor — normal <70, warning 70–100, critical >100. jamInd: broadband jamming indicator (0–255) — <45 clean, 45–95 warning, >95 active jammer likely. Note: jamInd does NOT detect narrowband or out-of-band interference; check magI/Q for that. agcCnt (right axis, dotted): automatic gain control counter — normal 2000–6000, railed at 0 or 8191 means AGC cannot compensate.",
+      "description": "Three MON-RF metrics on one panel. noisePerMS: receiver noise floor — normal <70, warning 70–100, critical >100. jamInd: continuous-wave (narrow-band) interference indicator (0–255); no fixed threshold, judge against a baseline from an unjammed period. agcCnt (right axis, dotted): automatic gain control counter — normal 2000–6000, railed at 0 or 8191 means AGC cannot compensate.",
       "datasource": {
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
